@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upload a code — PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="card">
+      <h1 class="title-glow">Share a code</h1>
+      <p class="muted">Add a Pokémon TCG Live promo code to the vault so another trainer can claim it. Thanks for sharing! 🙌</p>
+      <div id="alert" class="alert"></div>
+
+      <form id="form">
+        <label for="code">Promo code</label>
+        <input id="code" name="code" placeholder="XXX-XXXX-XXX-XXX" autocomplete="off" spellcheck="false"
+               style="text-transform:uppercase; font-family:ui-monospace,monospace; letter-spacing:1px;" required />
+
+        <label for="pack">Pack / set name</label>
+        <select id="pack"></select>
+
+        <div id="custom-wrap" class="hidden">
+          <label for="custom-pack">Type pack name</label>
+          <input id="custom-pack" placeholder="e.g. Special Promo" />
+        </div>
+
+        <div class="spacer"></div>
+        <button class="btn block" id="submit" type="submit">Upload code</button>
+      </form>
+    </div>
+    <p class="foot"><a class="link" href="dashboard.html">← Back to dashboard</a></p>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/packs.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

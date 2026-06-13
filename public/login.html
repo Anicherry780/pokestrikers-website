@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log in — PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap narrow center-screen">
+    <main style="width:100%;">
+      <div class="center" style="margin-bottom:18px;">
+        <a class="brand" href="index.html" style="justify-content:center;">
+          <span class="logo">P</span>
+          <span class="name">Poke<b>Strikers</b></span>
+        </a>
+      </div>
+      <div class="card">
+        <h1 class="title-glow center">Welcome back</h1>
+        <div id="alert" class="alert"></div>
+        <form id="form">
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <div class="spacer"></div>
+          <button class="btn block" id="submit" type="submit">Log in</button>
+        </form>
+        <p class="center muted" style="margin-top:16px;">
+          No account? <a class="link" href="register.html">Create one</a>
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    if (PS.isLoggedIn()) location.href = "dashboard.html";
+    const form = document.getElementById("form");
+    const alertEl = document.getElementById("alert");
+    const btn = document.getElementById("submit");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      PS.clearAlert(alertEl);
+      btn.disabled = true; btn.textContent = "Logging in…";
+      try {
+        const data = await PS.api("/api/login", {
+          method: "POST",
+          body: {
+            username: document.getElementById("username").value.trim(),
+            password: document.getElementById("password").value,
+          },
+        });
+        PS.setAuth(data.token, data.user);
+        location.href = data.user.is_admin ? "admin.html" : "dashboard.html";
+      } catch (err) {
+        PS.alert(alertEl, "error", err.message);
+        btn.disabled = false; btn.textContent = "Log in";
+      }
+    });
+  </script>
+</body>
+</html>

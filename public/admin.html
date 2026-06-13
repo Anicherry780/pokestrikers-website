@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Tesseract.js OCR fallback (free, CDN, runs in browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div id="gate" class="center-screen hidden">
+      <div class="card center">
+        <h2 class="title-glow">Admin only</h2>
+        <p class="muted">This area is restricted to the PokeStrikers admin account.</p>
+        <a class="btn" href="dashboard.html">Back to dashboard</a>
+      </div>
+    </div>
+
+    <div id="panel" class="hidden">
+      <div class="card">
+        <div class="row between">
+          <h1 class="title-glow" style="margin:0;">Admin panel</h1>
+          <span class="pill" id="counts-pill">—</span>
+        </div>
+      </div>
+      <div id="alert" class="alert"></div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="codes">Codes</button>
+        <button class="tab" data-tab="add">Scan / Add</button>
+        <button class="tab" data-tab="users">Users</button>
+      </div>
+
+      <!-- ===== CODES TAB ===== -->
+      <section class="tab-panel active card" data-panel="codes">
+        <div class="row between">
+          <h2 class="title-glow" style="margin:0;">All codes</h2>
+          <button class="btn ghost small" id="refresh-codes">↻ Refresh</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="table-scroll">
+          <table id="codes-table">
+            <thead><tr>
+              <th>ID</th><th>Code</th><th>Pack</th><th>Status</th>
+              <th>Uploader</th><th>Claimer</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SCAN / ADD TAB ===== -->
+      <section class="tab-panel card" data-panel="add">
+        <h2 class="title-glow">Scan a promo card</h2>
+        <p class="muted">Point your camera at the back of the card. We try the QR code first, then OCR the printed code. The detected code auto-fills below.</p>
+        <div class="row">
+          <button class="btn" id="scan-start">📷 Open camera</button>
+          <button class="btn ghost hidden" id="scan-stop">Stop camera</button>
+        </div>
+        <div class="spacer"></div>
+        <video id="scanner-video" playsinline muted></video>
+        <div class="scan-status" id="scan-status"></div>
+
+        <hr style="border-color:var(--border); margin:22px 0;" />
+
+        <h3 class="title-glow">Add a single code</h3>
+        <label for="single-code">Code</label>
+        <input id="single-code" placeholder="XXX-XXXX-XXX-XXX" style="text-transform:uppercase;font-family:ui-monospace,monospace;" />
+        <label for="single-pack">Pack name (optional)</label>
+        <input id="single-pack" placeholder="Random Pack" />
+        <div class="spacer"></div>
+        <button class="btn" id="single-add">Add code</button>
+
+        <hr style="border-color:var(--border); margin:22px 0;" />
+
+        <h3 class="title-glow">Bulk upload</h3>
+        <p class="muted">One code per line. Optionally add a pack name after a comma: <code>ABC-DEFG-HIJ-KLM, Surging Sparks</code></p>
+        <textarea id="bulk-text" placeholder="ABC-DEFG-HIJ-KLM, Surging Sparks&#10;XYZ-1234-ABC-DEF"></textarea>
+        <div class="spacer"></div>
+        <button class="btn" id="bulk-add">Upload all</button>
+      </section>
+
+      <!-- ===== USERS TAB ===== -->
+      <section class="tab-panel card" data-panel="users">
+        <div class="row between">
+          <h2 class="title-glow" style="margin:0;">All users</h2>
+          <button class="btn ghost small" id="refresh-users">↻ Refresh</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="table-scroll">
+          <table id="users-table">
+            <thead><tr>
+              <th>ID</th><th>Username</th><th>Admin</th><th>Joined</th>
+              <th>Used today</th><th>Bonus</th><th>Uploaded</th><th>Claimed</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

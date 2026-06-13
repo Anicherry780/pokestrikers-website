@@ -1,0 +1,15 @@
+{
+  "name": "pokestrikers-website",
+  "version": "1.0.0",
+  "description": "PokeStrikers — Pokémon TCG promo code giveaway site (Cloudflare Pages + Functions + D1)",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --d1 DB=pokestrikers-db",
+    "db:local": "wrangler d1 execute pokestrikers-db --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute pokestrikers-db --remote --file=./schema.sql",
+    "deploy": "wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PokeStrikers — Free Pokémon TCG Promo Codes</title>
+  <meta name="description" content="Share and claim free Pokémon TCG Live promo codes with the PokeStrikers community." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap center-screen">
+    <main style="width:100%; max-width:760px;">
+      <div class="center" style="margin-bottom:26px;">
+        <div class="brand" style="justify-content:center; margin-bottom:14px;">
+          <span class="logo" style="width:64px;height:64px;font-size:30px;">P</span>
+        </div>
+        <h1 class="title-glow" style="font-size:clamp(2.2rem,7vw,3.4rem);">Poke<span style="color:var(--blue)">Strikers</span></h1>
+        <p class="hero-sub">The community vault for Pokémon TCG Live promo codes. Share the codes you don't need, claim the ones you do — completely free.</p>
+      </div>
+
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="num" id="code-count">—</div>
+            <div class="label">Codes available now</div>
+          </div>
+          <div class="stat">
+            <div class="num" id="user-count">—</div>
+            <div class="label">Trainers joined</div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="row" style="justify-content:center;">
+          <a class="btn" href="register.html">Create free account</a>
+          <a class="btn ghost" href="login.html">Log in</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="title-glow">How it works</h2>
+        <ol class="list-steps">
+          <li><b>Sign up</b> with just a username and password — no email needed.</li>
+          <li><b>Claim 1 free code</b> every day. A random available code is yours — copy it within 5 minutes.</li>
+          <li><b>Want a second?</b> Watch a PokeStrikers video, wait 10 minutes, and a bonus code unlocks.</li>
+          <li><b>Got spare codes?</b> Upload them so other trainers can grab them. Sharing keeps the vault full!</li>
+        </ol>
+      </div>
+
+      <p class="foot">PokeStrikers is a fan community. Not affiliated with, sponsored by, or endorsed by Nintendo, Game Freak, or The Pokémon Company.</p>
+    </main>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    // already logged in? send to dashboard
+    if (PS.isLoggedIn()) location.href = "dashboard.html";
+    (async () => {
+      try {
+        const s = await fetch("/api/stats").then(r => r.json());
+        document.getElementById("code-count").textContent = s.available_codes ?? 0;
+        document.getElementById("user-count").textContent = s.total_users ?? 0;
+      } catch {
+        document.getElementById("code-count").textContent = "0";
+        document.getElementById("user-count").textContent = "0";
+      }
+    })();
+  </script>
+</body>
+</html>

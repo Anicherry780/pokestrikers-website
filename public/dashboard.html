@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div id="alert" class="alert"></div>
+
+    <div class="card center">
+      <h1 class="title-glow">Your daily codes</h1>
+      <div class="stat-grid" style="margin-top:8px;">
+        <div class="stat">
+          <div class="num" id="remaining-today">—</div>
+          <div class="label">Codes left today</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="available">—</div>
+          <div class="label">Available in vault</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLAIM CARD -->
+    <div class="card" id="claim-card">
+      <h2 class="title-glow">Claim a code</h2>
+      <p class="muted" id="claim-help">Click below to be assigned a random available code. You'll have 5 minutes to copy it!</p>
+      <button class="btn block" id="claim-btn">🎴 Claim a code</button>
+
+      <!-- revealed code -->
+      <div id="reveal" class="code-reveal hidden">
+        <div class="muted">Your code — <span id="reveal-pack"></span></div>
+        <div class="code-box" id="reveal-code"></div>
+        <button class="btn" id="copy-btn">📋 Copy code</button>
+        <div class="timer-bar"><i id="timer-fill" style="width:100%"></i></div>
+        <p>Disappears in <span class="countdown" id="timer-text">5:00</span></p>
+        <p class="muted" style="font-size:.82rem;">Redeem at <a class="link" href="https://www.pokemon.com/us/pokemon-tcg/redeem-code/" target="_blank" rel="noopener">pokemon.com/redeem</a></p>
+      </div>
+    </div>
+
+    <!-- BONUS CARD -->
+    <div class="card" id="bonus-card">
+      <h2 class="title-glow">Unlock a 2nd code</h2>
+      <p class="muted" id="bonus-help">Watch a PokeStrikers video and wait 10 minutes to unlock a bonus code for today.</p>
+
+      <div id="bonus-start">
+        <a class="btn" id="watch-btn" href="https://www.youtube.com/@PokeStrikers" target="_blank" rel="noopener">▶ Watch a PokeStrikers Video</a>
+      </div>
+
+      <div id="bonus-waiting" class="hidden center">
+        <p class="muted">Bonus unlocks in</p>
+        <div class="countdown" id="bonus-timer">10:00</div>
+        <div class="timer-bar"><i id="bonus-fill" style="width:0%"></i></div>
+        <p class="muted" style="font-size:.82rem;">Keep this tab open. Watch the video while you wait!</p>
+      </div>
+
+      <div id="bonus-done" class="hidden">
+        <div class="alert show success">✅ Bonus unlocked! You can claim a 2nd code above.</div>
+      </div>
+    </div>
+
+    <p class="foot">Got spare codes? <a class="link" href="upload.html">Share them with the community →</a></p>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
