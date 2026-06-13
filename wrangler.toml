@@ -7,7 +7,7 @@ compatibility_date = "2024-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "pokestrikers-db"
-database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"
+database_id = "7000fb5a-525d-4d9d-8a49-f37894c4af61"
 
 # SESSION_SECRET is set as a secret/environment variable in the Cloudflare
 # dashboard (Pages > Settings > Variables and Secrets), NOT here.
