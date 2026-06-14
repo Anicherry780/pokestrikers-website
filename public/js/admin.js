@@ -137,7 +137,7 @@ if (PS.requireAuth()) {
       const m = String(raw).toUpperCase().match(CODE_RE);
       if (!m) return false;
       codeField.value = m[0];
-      status.textContent = `✅ Detected: ${m[0]} — filled in above.`;
+      status.textContent = `✅ Detected ${m[0]}. Filled in above.`;
       stop();
       codeField.scrollIntoView({ behavior: "smooth", block: "center" });
       return true;

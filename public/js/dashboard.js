@@ -53,7 +53,7 @@ if (PS.requireAuth()) {
   function paintClaim() {
     if (used >= allowance) {
       claimBtn.disabled = true;
-      claimBtn.textContent = used >= 2 ? "Daily limit reached" : "Claim used — unlock bonus below";
+      claimBtn.textContent = used >= 2 ? "Daily limit reached" : "Claim used, unlock bonus below";
       claimHelp.textContent = used >= 2
         ? "You've claimed your 2 codes today. Come back tomorrow!"
         : "You've used today's free code. Unlock a 2nd one below 👇";
@@ -119,7 +119,7 @@ if (PS.requireAuth()) {
       const ta = document.createElement("textarea");
       ta.value = text; document.body.appendChild(ta); ta.select();
       try { document.execCommand("copy"); copyBtn.textContent = "✅ Copied!"; }
-      catch { copyBtn.textContent = "Copy failed — select manually"; }
+      catch { copyBtn.textContent = "Copy failed, select manually"; }
       ta.remove();
     }
   });
