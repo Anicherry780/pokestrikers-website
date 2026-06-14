@@ -153,54 +153,46 @@ if (PS.requireAuth()) {
 
   /* ================= BONUS: watch the full video to unlock ================= */
   // Channel @PokeStrikers (UCGJnR3Eky-tBz4TPGUs-S-A). Start from a known recent
-  // video, upgrade to the newest upload via /api/latest-video.
+  // video, upgrade to the newest upload via /api/latest-video. We render a plain
+  // iframe (always shows the video) and attach the IFrame API only to detect when
+  // the video finishes, so the player is never blank even if the API is slow.
   const FALLBACK_VIDEO = "cgPvGAPyzlA";
-  let ytPlayer = null, ytApiReady = false, playerBuilt = false, pendingVideoId = null;
-  let unlocking = false;
+  const ytFrame = document.getElementById("yt-frame");
+  let ytPlayer = null, currentVideoId = null, unlocking = false, apiLoading = false;
 
-  // Load the YouTube IFrame Player API once.
-  (function loadYouTubeAPI() {
-    if (window.YT && window.YT.Player) { ytApiReady = true; return; }
-    window.onYouTubeIframeAPIReady = () => {
-      ytApiReady = true;
-      if (pendingVideoId) buildPlayer(pendingVideoId);
-    };
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-  })();
+  const srcFor = (id) =>
+    `https://www.youtube.com/embed/${id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(location.origin)}`;
+  function setSrc(id) { currentVideoId = id; ytFrame.src = srcFor(id); }
 
-  function buildPlayer(videoId) {
-    if (playerBuilt) {
-      if (ytPlayer && ytPlayer.cueVideoById) ytPlayer.cueVideoById(videoId);
-      return;
-    }
-    if (!ytApiReady) { pendingVideoId = videoId; return; }
-    playerBuilt = true;
-    ytPlayer = new YT.Player("yt-frame", {
-      videoId,
-      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+  // Load the IFrame API once, then attach a player to the existing iframe for the
+  // ENDED event. The video plays regardless of whether this succeeds.
+  function attachApi() {
+    const build = () => { if (!ytPlayer) ytPlayer = new YT.Player(ytFrame, {
       events: {
-        onStateChange: (e) => {
-          if (window.YT && e.data === YT.PlayerState.ENDED) onVideoEnded();
-        },
+        onStateChange: (e) => { if (window.YT && e.data === YT.PlayerState.ENDED) onVideoEnded(); },
       },
-    });
+    }); };
+    if (window.YT && window.YT.Player) { build(); return; }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (typeof prev === "function") prev(); build(); };
+    if (!apiLoading) {
+      apiLoading = true;
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    }
   }
 
   let embedSet = false;
   function setEmbed() {
     if (embedSet) return;
     embedSet = true;
-    buildPlayer(FALLBACK_VIDEO);                       // show something immediately
-    fetch("/api/latest-video")                         // upgrade to the newest upload
+    setSrc(FALLBACK_VIDEO);                             // show the video immediately
+    fetch("/api/latest-video")                          // upgrade to the newest upload
       .then((r) => r.json())
-      .then((d) => {
-        if (!d || !d.videoId || d.videoId === FALLBACK_VIDEO) return;
-        if (ytPlayer && ytPlayer.cueVideoById) ytPlayer.cueVideoById(d.videoId);
-        else pendingVideoId = d.videoId;
-      })
-      .catch(() => {});
+      .then((d) => { if (d && d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId); })
+      .catch(() => {})
+      .finally(() => attachApi());                      // attach end-detection last
   }
 
   async function onVideoEnded() {
@@ -224,7 +216,7 @@ if (PS.requireAuth()) {
       bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
       bonusHelp.textContent = "You've unlocked your bonus code for this cycle.";
-      if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+      if (ytFrame) ytFrame.src = "";   // stop playback once unlocked
       return;
     }
     bonusDone.classList.add("hidden");

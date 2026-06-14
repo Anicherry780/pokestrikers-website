@@ -1,0 +1,5 @@
+# Always revalidate JS/CSS so deploys take effect immediately (no stale cache).
+/js/*
+  Cache-Control: no-cache
+/css/*
+  Cache-Control: no-cache
