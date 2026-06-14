@@ -16,9 +16,20 @@ if (PS.requireAuth()) {
   const timerText  = document.getElementById("timer-text");
 
   // Embedded PokeStrikers videos (channel @PokeStrikers, ID UCGJnR3Eky-tBz4TPGUs-S-A).
-  // The "uploads" playlist is the channel ID with the UC prefix swapped to UU, played
-  // via the videoseries embed so the newest uploads appear automatically.
-  const YT_EMBED_URL = "https://www.youtube.com/embed/videoseries?list=UUGJnR3Eky-tBz4TPGUs-S-A&rel=0&modestbranding=1";
+  // We embed a specific video id (reliable), starting from a known recent one and
+  // upgrading to the channel's newest video via /api/latest-video.
+  const FALLBACK_VIDEO = "cgPvGAPyzlA";
+  const embedUrl = (id) => `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`;
+  let embedSet = false;
+  function setEmbed() {
+    if (embedSet) return;
+    embedSet = true;
+    ytFrame.src = embedUrl(FALLBACK_VIDEO);          // show something immediately
+    fetch("/api/latest-video")                       // then upgrade to the latest upload
+      .then((r) => r.json())
+      .then((d) => { if (d && d.videoId && d.videoId !== FALLBACK_VIDEO) ytFrame.src = embedUrl(d.videoId); })
+      .catch(() => {});
+  }
   const bonusActive = document.getElementById("bonus-active");
   const ytFrame     = document.getElementById("yt-frame");
   const bonusDone   = document.getElementById("bonus-done");
@@ -127,7 +138,7 @@ if (PS.requireAuth()) {
   let bonusStarted = false;
 
   function paintBonus(user) {
-    if (user.bonus_unlocked_today) {
+    if (user && user.bonus_unlocked_today) {
       bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
       bonusHelp.textContent = "You've unlocked your bonus code for today.";
@@ -138,7 +149,7 @@ if (PS.requireAuth()) {
     // Not unlocked: show the embedded player and run the 10-min timer on this page.
     bonusDone.classList.add("hidden");
     bonusActive.classList.remove("hidden");
-    if (!ytFrame.src) ytFrame.src = YT_EMBED_URL;
+    setEmbed();
     beginBonus();
   }
 
@@ -179,6 +190,9 @@ if (PS.requireAuth()) {
     bonusInterval = setInterval(poll, 2000);
   }
 
+  // Render the bonus player immediately from cached state so it shows even while
+  // /api/me is loading (or if it's slow). refresh() then corrects the real state.
+  paintBonus(PS.getUser());
   refresh();
   // keep available-count fresh
   setInterval(() => {
