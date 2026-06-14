@@ -1,4 +1,4 @@
-import { json, err, getUser, dailyAllowance, sweepExpired, nowIso, CLAIM_WINDOW_MS } from "../_utils.js";
+import { json, err, getUser, dailyAllowance, sweepExpired, nowIso, resetAt, CLAIM_WINDOW_MS, DAY_MS } from "../_utils.js";
 
 // GET /api/codes/claim — assign a random available code to the user.
 export async function onRequestGet({ request, env }) {
@@ -9,9 +9,10 @@ export async function onRequestGet({ request, env }) {
 
   const allowance = dailyAllowance(user);
   if (user.daily_codes_used >= allowance) {
-    if (!user.bonus_unlocked_today)
-      return err("You've used your free code today. Watch a PokeStrikers video to unlock a 2nd code!", 429);
-    return err("You've claimed your maximum of 2 codes today. Come back tomorrow!", 429);
+    const msg = user.bonus_unlocked_today
+      ? "You've claimed your maximum of 2 codes. Come back when your 24h cooldown ends!"
+      : "You've used your free code. Watch the full PokeStrikers video to unlock a 2nd code!";
+    return json({ error: msg, reset_at: resetAt(user) }, 429);
   }
 
   // Pick a random available code.
@@ -34,8 +35,17 @@ export async function onRequestGet({ request, env }) {
     return err("That code was just taken — try again.", 409);
   }
 
-  await env.DB.prepare("UPDATE users SET daily_codes_used = daily_codes_used + 1 WHERE id = ?")
-    .bind(user.id).run();
+  // Start the 24h window on the first claim; keep it on subsequent claims.
+  const windowStart = user.last_reset_date || claimedAt;
+  if (user.last_reset_date) {
+    await env.DB.prepare("UPDATE users SET daily_codes_used = daily_codes_used + 1 WHERE id = ?")
+      .bind(user.id).run();
+  } else {
+    await env.DB.prepare("UPDATE users SET daily_codes_used = daily_codes_used + 1, last_reset_date = ? WHERE id = ?")
+      .bind(windowStart, user.id).run();
+  }
+
+  const reset_at = new Date(new Date(windowStart).getTime() + DAY_MS).toISOString();
 
   return json({
     code: code.code,
@@ -44,5 +54,6 @@ export async function onRequestGet({ request, env }) {
     window_ms: CLAIM_WINDOW_MS,
     daily_codes_used: user.daily_codes_used + 1,
     allowance,
+    reset_at,
   });
 }

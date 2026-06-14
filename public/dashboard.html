@@ -15,7 +15,7 @@
       <div class="stat-grid" style="margin-top:8px;">
         <div class="stat">
           <div class="num" id="remaining-today">…</div>
-          <div class="label">Codes left today</div>
+          <div class="label">Codes you can claim</div>
         </div>
         <div class="stat">
           <div class="num" id="available">…</div>
@@ -29,6 +29,10 @@
       <h2 class="title-glow">Claim a code</h2>
       <p class="muted" id="claim-help">Click below to be assigned a random available code. You'll have 5 minutes to copy it!</p>
       <button class="btn block" id="claim-btn">🎴 Claim a code</button>
+      <p class="center hidden" id="cooldown-wrap" style="margin-top:12px;">
+        <span class="muted">Next code in</span>
+        <span class="countdown" id="cooldown-timer" style="display:block;"></span>
+      </p>
 
       <!-- revealed code -->
       <div id="reveal" class="code-reveal hidden">
@@ -44,22 +48,13 @@
     <!-- BONUS CARD -->
     <div class="card" id="bonus-card">
       <h2 class="title-glow">Unlock a 2nd code</h2>
-      <p class="muted" id="bonus-help">Watch a PokeStrikers video and wait 10 minutes to unlock a bonus code for today.</p>
+      <p class="muted" id="bonus-help">Watch the full PokeStrikers video below to unlock a 2nd code.</p>
 
       <div id="bonus-active" class="hidden">
         <div class="video-embed">
-          <iframe id="yt-frame" title="PokeStrikers video"
-                  frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerpolicy="strict-origin-when-cross-origin"
-                  allowfullscreen></iframe>
+          <div id="yt-frame"></div>
         </div>
-        <div class="center">
-          <p class="muted">Bonus unlocks in</p>
-          <div class="countdown" id="bonus-timer">10:00</div>
-          <div class="timer-bar"><i id="bonus-fill" style="width:0%"></i></div>
-          <p class="muted" style="font-size:.82rem;">Keep watching on this page. Your bonus code unlocks when the timer hits zero.</p>
-        </div>
+        <p class="muted center" id="bonus-watch-status">▶ Watch the full video to the end to unlock your 2nd code.</p>
       </div>
 
       <div id="bonus-done" class="hidden">

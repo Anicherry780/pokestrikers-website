@@ -60,6 +60,14 @@ const PS = {
     return `${m}:${String(r).padStart(2, "0")}`;
   },
 
+  // HH:MM:SS, for the 24h claim cooldown.
+  fmtClock(ms) {
+    let s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600); s %= 3600;
+    const m = Math.floor(s / 60); const r = s % 60;
+    return `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  },
+
   // Format a raw promo code into XXX-XXXX-XXX-XXX (groups of 3,4,3,3).
   formatCode(raw) {
     const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 13);

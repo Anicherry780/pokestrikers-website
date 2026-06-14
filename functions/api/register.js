@@ -1,4 +1,4 @@
-import { json, err, hashPassword, signToken, nowIso, todayStr, publicUser, ADMIN_USERNAME } from "./_utils.js";
+import { json, err, hashPassword, signToken, nowIso, publicUser, ADMIN_USERNAME } from "./_utils.js";
 
 export async function onRequestPost({ request, env }) {
   let body;
@@ -19,13 +19,14 @@ export async function onRequestPost({ request, env }) {
   const isAdmin = username.toLowerCase() === ADMIN_USERNAME ? 1 : 0;
   const hash = await hashPassword(password);
 
+  // last_reset_date stays NULL until the user's first claim starts the 24h window.
   const res = await env.DB.prepare(
     `INSERT INTO users (username, password_hash, is_admin, created_at, daily_codes_used, last_reset_date, bonus_unlocked_today)
-     VALUES (?, ?, ?, ?, 0, ?, 0)`
-  ).bind(username, hash, isAdmin, nowIso(), todayStr()).run();
+     VALUES (?, ?, ?, ?, 0, NULL, 0)`
+  ).bind(username, hash, isAdmin, nowIso()).run();
 
   const id = res.meta.last_row_id;
   const token = await signToken(env, id);
-  const user = { id, username, is_admin: isAdmin, daily_codes_used: 0, bonus_unlocked_today: 0, bonus_timer_start: null };
+  const user = { id, username, is_admin: isAdmin, daily_codes_used: 0, bonus_unlocked_today: 0, last_reset_date: null };
   return json({ token, user: publicUser(user) }, 201);
 }

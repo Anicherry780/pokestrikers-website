@@ -15,7 +15,7 @@ Theme: Mega Charizard X — dark navy/black with electric-blue (`#00AAFF`) glow.
 
 | Feature | Detail |
 |---|---|
-| **Daily limit** | 1 free code/day per user. Watch a PokeStrikers video → 10-min timer → unlocks a 2nd code. Max 2/day, resets at midnight (UTC). |
+| **Claim limit** | 1 free code per user. Watch a full PokeStrikers video (embedded) → unlocks a 2nd code. Max 2 codes, then a 24h cooldown that starts on the first claim. |
 | **Claiming** | A random available code is assigned and shown with a 5-minute countdown. After 5 min it disappears and is marked expired. |
 | **Uploading** | Any logged-in user can add a code (`XXX-XXXX-XXX-XXX`). Pack name optional (defaults to "Random Pack"). |
 | **Admin** | Username `pokestrikers`. View/delete/bulk-upload codes, see users, camera scanner. |

@@ -110,7 +110,7 @@ npm run dev                          # http://localhost:8788
 
 ## Notes & limitations
 
-- **Daily reset** happens at **midnight UTC** (server time), not local time.
+- **Claim cooldown** is a rolling **24 hours** that starts on the user's first claim (not a calendar-midnight reset).
 - **Passwords** are hashed with PBKDF2-SHA256 via Web Crypto (Workers don't support native bcrypt; PBKDF2 is the secure in-Workers equivalent).
 - **Sessions** are HMAC-signed tokens stored in `localStorage`. Accounts live in D1, so clearing the browser just means logging back in.
 - **Scanning** (BarcodeDetector + Tesseract.js) runs **entirely in the browser** — nothing is uploaded. The QR scanner needs Chrome/Edge/Android; on unsupported browsers it falls back to OCR automatically.

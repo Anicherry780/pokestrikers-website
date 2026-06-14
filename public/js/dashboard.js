@@ -1,4 +1,4 @@
-// Dashboard logic: daily limit, claim countdown, bonus video timer.
+// Dashboard logic: claim flow + 24h cooldown, plus watch-to-unlock bonus video.
 if (PS.requireAuth()) {
   PS.mountHeader("dashboard");
 
@@ -15,32 +15,18 @@ if (PS.requireAuth()) {
   const timerFill  = document.getElementById("timer-fill");
   const timerText  = document.getElementById("timer-text");
 
-  // Embedded PokeStrikers videos (channel @PokeStrikers, ID UCGJnR3Eky-tBz4TPGUs-S-A).
-  // We embed a specific video id (reliable), starting from a known recent one and
-  // upgrading to the channel's newest video via /api/latest-video.
-  const FALLBACK_VIDEO = "cgPvGAPyzlA";
-  const embedUrl = (id) => `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`;
-  let embedSet = false;
-  function setEmbed() {
-    if (embedSet) return;
-    embedSet = true;
-    ytFrame.src = embedUrl(FALLBACK_VIDEO);          // show something immediately
-    fetch("/api/latest-video")                       // then upgrade to the latest upload
-      .then((r) => r.json())
-      .then((d) => { if (d && d.videoId && d.videoId !== FALLBACK_VIDEO) ytFrame.src = embedUrl(d.videoId); })
-      .catch(() => {});
-  }
-  const bonusActive = document.getElementById("bonus-active");
-  const ytFrame     = document.getElementById("yt-frame");
-  const bonusDone   = document.getElementById("bonus-done");
-  const bonusHelp   = document.getElementById("bonus-help");
-  const bonusTimer  = document.getElementById("bonus-timer");
-  const bonusFill   = document.getElementById("bonus-fill");
+  const cooldownWrap  = document.getElementById("cooldown-wrap");
+  const cooldownTimer = document.getElementById("cooldown-timer");
 
-  let allowance = 1, used = 0;
-  let claimInterval = null;
-  let bonusInterval = null;
+  const bonusActive  = document.getElementById("bonus-active");
+  const bonusDone    = document.getElementById("bonus-done");
+  const bonusHelp    = document.getElementById("bonus-help");
+  const bonusStatus  = document.getElementById("bonus-watch-status");
 
+  let allowance = 1, used = 0, cooldownEndIso = null;
+  let claimInterval = null, cooldownInterval = null;
+
+  /* ================= state painting ================= */
   function paintCounts() {
     remEl.textContent = Math.max(0, allowance - used);
   }
@@ -51,6 +37,7 @@ if (PS.requireAuth()) {
       PS.setAuth(PS.getToken(), data.user);   // keep cached user fresh
       allowance = data.allowance;
       used = data.user.daily_codes_used;
+      cooldownEndIso = data.user.reset_at;
       availEl.textContent = data.available_codes;
       paintCounts();
       paintClaim();
@@ -63,17 +50,47 @@ if (PS.requireAuth()) {
   function paintClaim() {
     if (used >= allowance) {
       claimBtn.disabled = true;
-      claimBtn.textContent = used >= 2 ? "Daily limit reached" : "Claim used, unlock bonus below";
-      claimHelp.textContent = used >= 2
-        ? "You've claimed your 2 codes today. Come back tomorrow!"
-        : "You've used today's free code. Unlock a 2nd one below 👇";
+      if (used >= 2) {
+        claimBtn.textContent = "Daily limit reached";
+        claimHelp.textContent = "You've claimed your 2 codes. Your next codes unlock when the 24h cooldown ends.";
+        startCooldownCountdown();
+      } else {
+        claimBtn.textContent = "Free code used — unlock bonus below";
+        claimHelp.textContent = "You've used your free code. Watch the full video below to unlock a 2nd one 👇";
+        stopCooldownCountdown();
+      }
     } else {
       claimBtn.disabled = false;
       claimBtn.textContent = "🎴 Claim a code";
+      stopCooldownCountdown();
     }
   }
 
-  // ---------- CLAIM ----------
+  /* ================= 24h cooldown countdown ================= */
+  function startCooldownCountdown() {
+    stopCooldownCountdown();
+    if (!cooldownEndIso) { cooldownWrap.classList.add("hidden"); return; }
+    const end = new Date(cooldownEndIso).getTime();
+    const tick = () => {
+      const left = end - Date.now();
+      if (left <= 0) {
+        stopCooldownCountdown();
+        refresh();   // window has reset — reload fresh state
+        return;
+      }
+      cooldownWrap.classList.remove("hidden");
+      cooldownTimer.textContent = PS.fmtClock(left);
+    };
+    tick();
+    cooldownInterval = setInterval(tick, 1000);
+  }
+  function stopCooldownCountdown() {
+    if (cooldownInterval) clearInterval(cooldownInterval);
+    cooldownInterval = null;
+    cooldownWrap.classList.add("hidden");
+  }
+
+  /* ================= CLAIM ================= */
   claimBtn.addEventListener("click", async () => {
     PS.clearAlert(alertEl);
     claimBtn.disabled = true; claimBtn.textContent = "Claiming…";
@@ -81,6 +98,7 @@ if (PS.requireAuth()) {
       const data = await PS.api("/api/codes/claim");
       used = data.daily_codes_used;
       allowance = data.allowance;
+      cooldownEndIso = data.reset_at || cooldownEndIso;
       paintCounts();
       showCode(data);
       refresh();
@@ -125,7 +143,6 @@ if (PS.requireAuth()) {
       await navigator.clipboard.writeText(text);
       copyBtn.textContent = "✅ Copied!";
     } catch {
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = text; document.body.appendChild(ta); ta.select();
       try { document.execCommand("copy"); copyBtn.textContent = "✅ Copied!"; }
@@ -134,68 +151,94 @@ if (PS.requireAuth()) {
     }
   });
 
-  // ---------- BONUS ----------
-  let bonusStarted = false;
+  /* ================= BONUS: watch the full video to unlock ================= */
+  // Channel @PokeStrikers (UCGJnR3Eky-tBz4TPGUs-S-A). Start from a known recent
+  // video, upgrade to the newest upload via /api/latest-video.
+  const FALLBACK_VIDEO = "cgPvGAPyzlA";
+  let ytPlayer = null, ytApiReady = false, playerBuilt = false, pendingVideoId = null;
+  let unlocking = false;
+
+  // Load the YouTube IFrame Player API once.
+  (function loadYouTubeAPI() {
+    if (window.YT && window.YT.Player) { ytApiReady = true; return; }
+    window.onYouTubeIframeAPIReady = () => {
+      ytApiReady = true;
+      if (pendingVideoId) buildPlayer(pendingVideoId);
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  })();
+
+  function buildPlayer(videoId) {
+    if (playerBuilt) {
+      if (ytPlayer && ytPlayer.cueVideoById) ytPlayer.cueVideoById(videoId);
+      return;
+    }
+    if (!ytApiReady) { pendingVideoId = videoId; return; }
+    playerBuilt = true;
+    ytPlayer = new YT.Player("yt-frame", {
+      videoId,
+      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onStateChange: (e) => {
+          if (window.YT && e.data === YT.PlayerState.ENDED) onVideoEnded();
+        },
+      },
+    });
+  }
+
+  let embedSet = false;
+  function setEmbed() {
+    if (embedSet) return;
+    embedSet = true;
+    buildPlayer(FALLBACK_VIDEO);                       // show something immediately
+    fetch("/api/latest-video")                         // upgrade to the newest upload
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d || !d.videoId || d.videoId === FALLBACK_VIDEO) return;
+        if (ytPlayer && ytPlayer.cueVideoById) ytPlayer.cueVideoById(d.videoId);
+        else pendingVideoId = d.videoId;
+      })
+      .catch(() => {});
+  }
+
+  async function onVideoEnded() {
+    if (unlocking) return;
+    unlocking = true;
+    if (bonusStatus) bonusStatus.textContent = "Unlocking your bonus code…";
+    try {
+      await PS.api("/api/bonus/unlock", { method: "POST" });
+      bonusActive.classList.add("hidden");
+      bonusDone.classList.remove("hidden");
+      PS.alert(alertEl, "success", "🎉 Bonus code unlocked! Claim it above.");
+      refresh();
+    } catch (e) {
+      unlocking = false;
+      PS.alert(alertEl, "error", e.message);
+    }
+  }
 
   function paintBonus(user) {
     if (user && user.bonus_unlocked_today) {
       bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
-      bonusHelp.textContent = "You've unlocked your bonus code for today.";
-      if (ytFrame.src) ytFrame.src = "";   // stop playback once unlocked
-      if (bonusInterval) clearInterval(bonusInterval);
+      bonusHelp.textContent = "You've unlocked your bonus code for this cycle.";
+      if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
       return;
     }
-    // Not unlocked: show the embedded player and run the 10-min timer on this page.
     bonusDone.classList.add("hidden");
     bonusActive.classList.remove("hidden");
+    bonusHelp.textContent = "Watch the full PokeStrikers video below to unlock a 2nd code.";
     setEmbed();
-    beginBonus();
   }
 
-  async function beginBonus() {
-    if (bonusStarted) return;            // idempotent — only start once per load
-    bonusStarted = true;
-    try {
-      await PS.api("/api/bonus/start-timer", { method: "POST" });
-    } catch (e) {
-      PS.alert(alertEl, "error", e.message);
-    }
-    startBonusCountdown();
-  }
-
-  function startBonusCountdown() {
-    if (bonusInterval) clearInterval(bonusInterval);
-
-    const poll = async () => {
-      try {
-        const r = await PS.api("/api/bonus/check-timer");
-        if (r.unlocked) {
-          clearInterval(bonusInterval);
-          bonusActive.classList.add("hidden");
-          bonusDone.classList.remove("hidden");
-          ytFrame.src = "";
-          PS.alert(alertEl, "success", "🎉 Bonus code unlocked! Claim it above.");
-          refresh();
-          return;
-        }
-        const total = 10 * 60 * 1000;
-        bonusTimer.textContent = PS.fmtTime(r.remaining_ms);
-        bonusFill.style.width = (100 - (r.remaining_ms / total) * 100) + "%";
-      } catch (e) {
-        // keep trying; show error once
-      }
-    };
-    poll();
-    bonusInterval = setInterval(poll, 2000);
-  }
-
-  // Render the bonus player immediately from cached state so it shows even while
-  // /api/me is loading (or if it's slow). refresh() then corrects the real state.
+  /* ================= init ================= */
+  // Render bonus + claim immediately from cached state so the page isn't blank
+  // while /api/me loads; refresh() then corrects with the authoritative state.
   paintBonus(PS.getUser());
   refresh();
-  // keep available-count fresh
   setInterval(() => {
-    PS.api("/api/me").then(d => { availEl.textContent = d.available_codes; }).catch(()=>{});
+    PS.api("/api/me").then((d) => { availEl.textContent = d.available_codes; }).catch(() => {});
   }, 30000);
 }

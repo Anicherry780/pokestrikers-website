@@ -1,9 +1,9 @@
 // Shared helpers for PokeStrikers Pages Functions.
 // Files starting with "_" are NOT routed — they can only be imported.
 
-export const DAILY_FREE = 1;            // free codes per day
-export const BONUS_WAIT_MS = 10 * 60 * 1000;   // 10 min video timer
+export const DAILY_FREE = 1;            // free codes per claim window
 export const CLAIM_WINDOW_MS = 5 * 60 * 1000;  // 5 min to copy a claimed code
+export const DAY_MS = 24 * 60 * 60 * 1000;     // 24h cooldown after first claim
 export const ADMIN_USERNAME = "pokestrikers";
 
 export const CODE_REGEX = /^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{3}-[A-Z0-9]{3}$/;
@@ -121,17 +121,34 @@ export async function getUser(request, env) {
   let user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(data.uid).first();
   if (!user) return null;
 
-  const today = todayStr();
-  if (user.last_reset_date !== today) {
-    await env.DB.prepare(
-      "UPDATE users SET daily_codes_used = 0, bonus_unlocked_today = 0, bonus_timer_start = NULL, last_reset_date = ? WHERE id = ?"
-    ).bind(today, user.id).run();
-    user.daily_codes_used = 0;
-    user.bonus_unlocked_today = 0;
-    user.bonus_timer_start = null;
-    user.last_reset_date = today;
+  return applyWindowReset(user, env);
+}
+
+// 24h rolling window. `last_reset_date` holds the ISO timestamp the current claim
+// window started (set on the first claim). Once 24h have passed, the quota and
+// bonus reset and the window clears so the next claim starts a fresh 24h.
+export async function applyWindowReset(user, env) {
+  if (user.last_reset_date) {
+    const started = new Date(user.last_reset_date).getTime();
+    if (!isNaN(started) && Date.now() - started >= DAY_MS) {
+      await env.DB.prepare(
+        "UPDATE users SET daily_codes_used = 0, bonus_unlocked_today = 0, bonus_timer_start = NULL, last_reset_date = NULL WHERE id = ?"
+      ).bind(user.id).run();
+      user.daily_codes_used = 0;
+      user.bonus_unlocked_today = 0;
+      user.bonus_timer_start = null;
+      user.last_reset_date = null;
+    }
   }
   return user;
+}
+
+// ISO time the current cooldown ends (window start + 24h), or null if no window.
+export function resetAt(u) {
+  if (!u.last_reset_date) return null;
+  const started = new Date(u.last_reset_date).getTime();
+  if (isNaN(started)) return null;
+  return new Date(started + DAY_MS).toISOString();
 }
 
 export function publicUser(u) {
@@ -141,11 +158,11 @@ export function publicUser(u) {
     is_admin: !!u.is_admin,
     daily_codes_used: u.daily_codes_used,
     bonus_unlocked_today: !!u.bonus_unlocked_today,
-    bonus_timer_start: u.bonus_timer_start,
+    reset_at: resetAt(u),
   };
 }
 
-// Max codes a user may claim today given bonus state.
+// Max codes a user may claim in the current window given bonus state.
 export const dailyAllowance = (u) => DAILY_FREE + (u.bonus_unlocked_today ? 1 : 0);
 
 // Lazily flip claimed-but-expired codes to "expired".
