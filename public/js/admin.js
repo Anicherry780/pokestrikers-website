@@ -115,116 +115,17 @@ if (PS.requireAuth()) {
     PS.attachCodeFormatter(document.getElementById("single-code"));
 
     /* ---------- camera scanner ---------- */
-    setupScanner(alertEl);
+    PS.attachScanner({
+      startBtn:    document.getElementById("scan-start"),
+      stopBtn:     document.getElementById("scan-stop"),
+      video:       document.getElementById("scanner-video"),
+      status:      document.getElementById("scan-status"),
+      targetInput: document.getElementById("single-code"),
+      alertEl,
+    });
 
     loadCodes();
     loadUsers();
-  }
-
-  /* ============ SCANNER ============ */
-  function setupScanner(alertEl) {
-    const startBtn = document.getElementById("scan-start");
-    const stopBtn  = document.getElementById("scan-stop");
-    const video    = document.getElementById("scanner-video");
-    const status   = document.getElementById("scan-status");
-    const codeField = document.getElementById("single-code");
-
-    const CODE_RE = /[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{3}-[A-Z0-9]{3}/;
-    let stream = null, rafId = null, scanning = false, busyOCR = false;
-    let barcodeDetector = null;
-    if ("BarcodeDetector" in window) {
-      try { barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] }); } catch {}
-    }
-
-    function found(raw) {
-      const m = String(raw).toUpperCase().match(CODE_RE);
-      if (!m) return false;
-      codeField.value = m[0];
-      status.textContent = `✅ Detected ${m[0]}. Filled in above.`;
-      stop();
-      codeField.scrollIntoView({ behavior: "smooth", block: "center" });
-      return true;
-    }
-
-    async function loop() {
-      if (!scanning) return;
-
-      // 1) Try QR via BarcodeDetector
-      if (barcodeDetector) {
-        try {
-          const codes = await barcodeDetector.detect(video);
-          for (const c of codes) if (found(c.rawValue)) return;
-        } catch {}
-      }
-
-      // 2) Fallback to OCR roughly every 2.5s (Tesseract is heavy)
-      if (window.Tesseract && !busyOCR) {
-        busyOCR = true;
-        ocrFrame().finally(() => { busyOCR = false; });
-      }
-
-      rafId = requestAnimationFrame(loop);
-    }
-
-    let lastOCR = 0;
-    async function ocrFrame() {
-      const now = Date.now();
-      if (now - lastOCR < 2500) return;
-      lastOCR = now;
-      if (!video.videoWidth) return;
-
-      const canvas = document.createElement("canvas");
-      // capture lower-third of the frame where the printed code usually sits, scaled up
-      const cw = video.videoWidth, ch = video.videoHeight;
-      canvas.width = cw; canvas.height = ch;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, cw, ch);
-
-      status.textContent = "🔎 Reading text…";
-      try {
-        const { data } = await Tesseract.recognize(canvas, "eng", {
-          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
-        });
-        if (!found(data.text) && scanning) status.textContent = "Scanning… hold the code steady in view.";
-      } catch {
-        if (scanning) status.textContent = "Scanning…";
-      }
-    }
-
-    async function start() {
-      PS.clearAlert(alertEl);
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }, audio: false,
-        });
-        video.srcObject = stream;
-        await video.play();
-        video.style.display = "block";
-        startBtn.classList.add("hidden");
-        stopBtn.classList.remove("hidden");
-        scanning = true;
-        status.textContent = barcodeDetector
-          ? "Scanning… point at the QR code or the printed code."
-          : "Scanning via OCR… point at the printed code (QR scanner not supported on this browser).";
-        loop();
-      } catch (e) {
-        PS.alert(alertEl, "error", "Couldn't access the camera: " + e.message);
-      }
-    }
-
-    function stop() {
-      scanning = false;
-      if (rafId) cancelAnimationFrame(rafId);
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      stream = null;
-      video.style.display = "none";
-      startBtn.classList.remove("hidden");
-      stopBtn.classList.add("hidden");
-    }
-
-    startBtn.addEventListener("click", start);
-    stopBtn.addEventListener("click", () => { stop(); status.textContent = "Camera stopped."; });
-    window.addEventListener("beforeunload", stop);
   }
 
   function esc(s) {

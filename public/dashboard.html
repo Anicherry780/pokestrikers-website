@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard - PokeStrikers</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
   <div class="wrap">
@@ -27,10 +27,16 @@
     <!-- CLAIM CARD -->
     <div class="card" id="claim-card">
       <h2 class="title-glow">Claim a code</h2>
-      <p class="muted" id="claim-help">Click below to be assigned a random available code. You'll have 5 minutes to copy it!</p>
+      <p class="muted" id="claim-help">Pick the set you want, then claim. You'll have 5 minutes to copy it!</p>
+
+      <label for="pack-pick">Choose a set</label>
+      <select id="pack-pick"><option value="">Any available set</option></select>
+      <div class="spacer"></div>
+
       <button class="btn block" id="claim-btn">🎴 Claim a code</button>
-      <p class="center hidden" id="cooldown-wrap" style="margin-top:12px;">
-        <span class="muted">Next code in</span>
+
+      <p class="center hidden" id="cooldown-wrap" style="margin-top:14px;">
+        <span class="muted">Everything resets in</span>
         <span class="countdown" id="cooldown-timer" style="display:block;"></span>
       </p>
 
@@ -41,7 +47,7 @@
         <button class="btn" id="copy-btn">📋 Copy code</button>
         <div class="timer-bar"><i id="timer-fill" style="width:100%"></i></div>
         <p>Disappears in <span class="countdown" id="timer-text">5:00</span></p>
-        <p class="muted" style="font-size:.82rem;">Redeem at <a class="link" href="https://www.pokemon.com/us/pokemon-tcg/redeem-code/" target="_blank" rel="noopener">pokemon.com/redeem</a></p>
+        <p class="muted" style="font-size:.82rem;">Redeem at <a class="link" href="https://tcg.pokemon.com/en-us/tcgl/" target="_blank" rel="noopener">tcg.pokemon.com</a></p>
       </div>
     </div>
 
@@ -68,7 +74,7 @@
     <p class="foot">Got spare codes? <a class="link" href="upload.html">Share them with the community →</a></p>
   </div>
 
-  <script src="js/common.js?v=2"></script>
-  <script src="js/dashboard.js?v=2"></script>
+  <script src="js/common.js?v=3"></script>
+  <script src="js/dashboard.js?v=3"></script>
 </body>
 </html>

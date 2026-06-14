@@ -18,6 +18,16 @@ if (PS.requireAuth()) {
   // auto-insert dashes as the user types
   PS.attachCodeFormatter(codeInput);
 
+  // camera scanner fills the code field
+  PS.attachScanner({
+    startBtn:    document.getElementById("scan-start"),
+    stopBtn:     document.getElementById("scan-stop"),
+    video:       document.getElementById("scanner-video"),
+    status:      document.getElementById("scan-status"),
+    targetInput: codeInput,
+    alertEl,
+  });
+
   packSelect.addEventListener("change", () => {
     customWrap.classList.toggle("hidden", packSelect.value !== "__other__");
   });

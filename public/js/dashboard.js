@@ -17,13 +17,14 @@ if (PS.requireAuth()) {
 
   const cooldownWrap  = document.getElementById("cooldown-wrap");
   const cooldownTimer = document.getElementById("cooldown-timer");
+  const packPick      = document.getElementById("pack-pick");
 
   const bonusActive  = document.getElementById("bonus-active");
   const bonusDone    = document.getElementById("bonus-done");
   const bonusHelp    = document.getElementById("bonus-help");
   const bonusStatus  = document.getElementById("bonus-watch-status");
 
-  let allowance = 1, used = 0, cooldownEndIso = null;
+  let allowance = 1, used = 0, cooldownEndIso = null, bonusUnlocked = false;
   let claimInterval = null, cooldownInterval = null;
 
   /* ================= state painting ================= */
@@ -37,32 +38,50 @@ if (PS.requireAuth()) {
       PS.setAuth(PS.getToken(), data.user);   // keep cached user fresh
       allowance = data.allowance;
       used = data.user.daily_codes_used;
+      bonusUnlocked = !!data.user.bonus_unlocked_today;
       cooldownEndIso = data.user.reset_at;
       availEl.textContent = data.available_codes;
       paintCounts();
       paintClaim();
       paintBonus(data.user);
+      loadPacks();
     } catch (e) {
       PS.alert(alertEl, "error", e.message);
     }
   }
 
+  // Populate the set picker with sets that currently have codes.
+  async function loadPacks() {
+    try {
+      const { packs } = await PS.api("/api/packs");
+      const prev = packPick.value;
+      const opts = ['<option value="">Any available set</option>'];
+      for (const p of packs) opts.push(`<option value="${escAttr(p.pack_name)}">${escHtml(p.pack_name)} (${p.count})</option>`);
+      packPick.innerHTML = opts.join("");
+      if ([...packPick.options].some((o) => o.value === prev)) packPick.value = prev;
+    } catch {}
+  }
+
   function paintClaim() {
-    if (used >= allowance) {
-      claimBtn.disabled = true;
-      if (used >= 2) {
-        claimBtn.textContent = "Daily limit reached";
-        claimHelp.textContent = "You've claimed your 2 codes. Your next codes unlock when the 24h cooldown ends.";
-        startCooldownCountdown();
-      } else {
-        claimBtn.textContent = "Free code used — unlock bonus below";
-        claimHelp.textContent = "You've used your free code. Watch the full video below to unlock a 2nd one 👇";
-        stopCooldownCountdown();
-      }
-    } else {
+    // The 24h timer is tied only to the 1st claim; show it whenever a window is
+    // running, independent of whether the bonus code has been taken yet.
+    if (cooldownEndIso) startCooldownCountdown(); else stopCooldownCountdown();
+
+    if (used < allowance) {
       claimBtn.disabled = false;
       claimBtn.textContent = "🎴 Claim a code";
-      stopCooldownCountdown();
+      claimHelp.textContent = used === 0
+        ? "Pick the set you want, then claim. You'll have 5 minutes to copy it!"
+        : "Your bonus code is ready — pick a set and claim it!";
+    } else {
+      claimBtn.disabled = true;
+      if (used >= 2) {
+        claimBtn.textContent = "Both codes claimed";
+        claimHelp.textContent = "You've taken both codes this cycle. They refresh when the timer below ends.";
+      } else {
+        claimBtn.textContent = "Free code claimed";
+        claimHelp.textContent = "Watch the full video below to unlock your 2nd code (any time before the reset).";
+      }
     }
   }
 
@@ -95,7 +114,9 @@ if (PS.requireAuth()) {
     PS.clearAlert(alertEl);
     claimBtn.disabled = true; claimBtn.textContent = "Claiming…";
     try {
-      const data = await PS.api("/api/codes/claim");
+      const pack = packPick.value;
+      const qs = pack ? `?pack=${encodeURIComponent(pack)}` : "";
+      const data = await PS.api("/api/codes/claim" + qs);
       used = data.daily_codes_used;
       allowance = data.allowance;
       cooldownEndIso = data.reset_at || cooldownEndIso;
@@ -107,6 +128,9 @@ if (PS.requireAuth()) {
       paintClaim();
     }
   });
+
+  const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const escAttr = (s) => escHtml(s);
 
   function showCode(data) {
     revealCode.textContent = data.code;

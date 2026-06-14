@@ -15,11 +15,22 @@ export async function onRequestGet({ request, env }) {
     return json({ error: msg, reset_at: resetAt(user) }, 429);
   }
 
-  // Pick a random available code.
-  const code = await env.DB.prepare(
-    "SELECT * FROM codes WHERE status = 'available' ORDER BY RANDOM() LIMIT 1"
-  ).first();
-  if (!code) return err("No codes are available right now. Check back soon — or upload one yourself!", 404);
+  // Optional pack filter (?pack=...). Empty/"Random Pack" means any pack.
+  const url = new URL(request.url);
+  const pack = (url.searchParams.get("pack") || "").trim();
+
+  let code;
+  if (pack && pack !== "Random Pack") {
+    code = await env.DB.prepare(
+      "SELECT * FROM codes WHERE status = 'available' AND pack_name = ? ORDER BY RANDOM() LIMIT 1"
+    ).bind(pack).first();
+    if (!code) return err(`No codes available for "${pack}" right now. Try another set!`, 404);
+  } else {
+    code = await env.DB.prepare(
+      "SELECT * FROM codes WHERE status = 'available' ORDER BY RANDOM() LIMIT 1"
+    ).first();
+    if (!code) return err("No codes are available right now. Check back soon — or upload one yourself!", 404);
+  }
 
   const now = Date.now();
   const claimedAt = new Date(now).toISOString();
