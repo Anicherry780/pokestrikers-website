@@ -15,6 +15,9 @@ if (PS.requireAuth()) {
   opts.push('<option value="__other__">Other (type my own)…</option>');
   packSelect.innerHTML = opts.join("");
 
+  // auto-insert dashes as the user types
+  PS.attachCodeFormatter(codeInput);
+
   packSelect.addEventListener("change", () => {
     customWrap.classList.toggle("hidden", packSelect.value !== "__other__");
   });

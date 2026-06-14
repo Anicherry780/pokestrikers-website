@@ -15,11 +15,10 @@ if (PS.requireAuth()) {
   const timerFill  = document.getElementById("timer-fill");
   const timerText  = document.getElementById("timer-text");
 
-  // Embedded PokeStrikers videos. A YouTube @handle can't be embedded directly —
-  // this uses the channel's uploads feed. If it doesn't load, paste your channel's
-  // UPLOADS playlist id (starts "UU…") as `&list=UU...`, or a single video id:
-  //   https://www.youtube.com/embed/VIDEO_ID?rel=0
-  const YT_EMBED_URL = "https://www.youtube.com/embed?listType=user_uploads&list=PokeStrikers&rel=0&modestbranding=1";
+  // Embedded PokeStrikers videos (channel @PokeStrikers, ID UCGJnR3Eky-tBz4TPGUs-S-A).
+  // The "uploads" playlist is the channel ID with the UC prefix swapped to UU, played
+  // via the videoseries embed so the newest uploads appear automatically.
+  const YT_EMBED_URL = "https://www.youtube.com/embed/videoseries?list=UUGJnR3Eky-tBz4TPGUs-S-A&rel=0&modestbranding=1";
   const bonusActive = document.getElementById("bonus-active");
   const ytFrame     = document.getElementById("yt-frame");
   const bonusDone   = document.getElementById("bonus-done");

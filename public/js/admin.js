@@ -111,6 +111,9 @@ if (PS.requireAuth()) {
       } catch (e) { PS.alert(alertEl, "error", e.message); }
     });
 
+    /* ---------- auto-format the single-code input ---------- */
+    PS.attachCodeFormatter(document.getElementById("single-code"));
+
     /* ---------- camera scanner ---------- */
     setupScanner(alertEl);
 

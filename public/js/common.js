@@ -60,6 +60,33 @@ const PS = {
     return `${m}:${String(r).padStart(2, "0")}`;
   },
 
+  // Format a raw promo code into XXX-XXXX-XXX-XXX (groups of 3,4,3,3).
+  formatCode(raw) {
+    const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 13);
+    const groups = [3, 4, 3, 3];
+    let out = "", i = 0;
+    for (const g of groups) {
+      if (i >= clean.length) break;
+      out += (out ? "-" : "") + clean.slice(i, i + g);
+      i += g;
+    }
+    return out;
+  },
+
+  // Attach live auto-formatting (dashes insert themselves as the user types).
+  attachCodeFormatter(input) {
+    if (!input) return;
+    input.setAttribute("maxlength", "16");          // 13 chars + 3 dashes
+    input.setAttribute("autocapitalize", "characters");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("spellcheck", "false");
+    input.addEventListener("input", () => {
+      const atEnd = input.selectionStart === input.value.length;
+      input.value = this.formatCode(input.value);
+      if (atEnd) input.setSelectionRange(input.value.length, input.value.length);
+    });
+  },
+
   // build the standard header; pass current page name to mark nav
   mountHeader(active) {
     const user = this.getUser();
