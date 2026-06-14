@@ -15,13 +15,17 @@ if (PS.requireAuth()) {
   const timerFill  = document.getElementById("timer-fill");
   const timerText  = document.getElementById("timer-text");
 
-  const bonusStart   = document.getElementById("bonus-start");
-  const bonusWaiting = document.getElementById("bonus-waiting");
-  const bonusDone    = document.getElementById("bonus-done");
-  const bonusHelp    = document.getElementById("bonus-help");
-  const watchBtn     = document.getElementById("watch-btn");
-  const bonusTimer   = document.getElementById("bonus-timer");
-  const bonusFill    = document.getElementById("bonus-fill");
+  // Embedded PokeStrikers videos. A YouTube @handle can't be embedded directly —
+  // this uses the channel's uploads feed. If it doesn't load, paste your channel's
+  // UPLOADS playlist id (starts "UU…") as `&list=UU...`, or a single video id:
+  //   https://www.youtube.com/embed/VIDEO_ID?rel=0
+  const YT_EMBED_URL = "https://www.youtube.com/embed?listType=user_uploads&list=PokeStrikers&rel=0&modestbranding=1";
+  const bonusActive = document.getElementById("bonus-active");
+  const ytFrame     = document.getElementById("yt-frame");
+  const bonusDone   = document.getElementById("bonus-done");
+  const bonusHelp   = document.getElementById("bonus-help");
+  const bonusTimer  = document.getElementById("bonus-timer");
+  const bonusFill   = document.getElementById("bonus-fill");
 
   let allowance = 1, used = 0;
   let claimInterval = null;
@@ -121,37 +125,36 @@ if (PS.requireAuth()) {
   });
 
   // ---------- BONUS ----------
+  let bonusStarted = false;
+
   function paintBonus(user) {
     if (user.bonus_unlocked_today) {
-      bonusStart.classList.add("hidden");
-      bonusWaiting.classList.add("hidden");
+      bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
       bonusHelp.textContent = "You've unlocked your bonus code for today.";
+      if (ytFrame.src) ytFrame.src = "";   // stop playback once unlocked
       if (bonusInterval) clearInterval(bonusInterval);
-    } else if (user.bonus_timer_start) {
-      // timer already running — resume it
-      startBonusCountdown();
-    } else {
-      bonusStart.classList.remove("hidden");
-      bonusWaiting.classList.add("hidden");
-      bonusDone.classList.add("hidden");
+      return;
     }
+    // Not unlocked: show the embedded player and run the 10-min timer on this page.
+    bonusDone.classList.add("hidden");
+    bonusActive.classList.remove("hidden");
+    if (!ytFrame.src) ytFrame.src = YT_EMBED_URL;
+    beginBonus();
   }
 
-  watchBtn.addEventListener("click", async () => {
-    // The link opens YouTube in a new tab (default anchor behavior). Start timer here.
+  async function beginBonus() {
+    if (bonusStarted) return;            // idempotent — only start once per load
+    bonusStarted = true;
     try {
       await PS.api("/api/bonus/start-timer", { method: "POST" });
-      startBonusCountdown();
     } catch (e) {
       PS.alert(alertEl, "error", e.message);
     }
-  });
+    startBonusCountdown();
+  }
 
   function startBonusCountdown() {
-    bonusStart.classList.add("hidden");
-    bonusDone.classList.add("hidden");
-    bonusWaiting.classList.remove("hidden");
     if (bonusInterval) clearInterval(bonusInterval);
 
     const poll = async () => {
@@ -159,8 +162,9 @@ if (PS.requireAuth()) {
         const r = await PS.api("/api/bonus/check-timer");
         if (r.unlocked) {
           clearInterval(bonusInterval);
-          bonusWaiting.classList.add("hidden");
+          bonusActive.classList.add("hidden");
           bonusDone.classList.remove("hidden");
+          ytFrame.src = "";
           PS.alert(alertEl, "success", "🎉 Bonus code unlocked! Claim it above.");
           refresh();
           return;

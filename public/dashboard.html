@@ -14,11 +14,11 @@
       <h1 class="title-glow">Your daily codes</h1>
       <div class="stat-grid" style="margin-top:8px;">
         <div class="stat">
-          <div class="num" id="remaining-today">—</div>
+          <div class="num" id="remaining-today">…</div>
           <div class="label">Codes left today</div>
         </div>
         <div class="stat">
-          <div class="num" id="available">—</div>
+          <div class="num" id="available">…</div>
           <div class="label">Available in vault</div>
         </div>
       </div>
@@ -46,15 +46,20 @@
       <h2 class="title-glow">Unlock a 2nd code</h2>
       <p class="muted" id="bonus-help">Watch a PokeStrikers video and wait 10 minutes to unlock a bonus code for today.</p>
 
-      <div id="bonus-start">
-        <a class="btn" id="watch-btn" href="https://www.youtube.com/@PokeStrikers" target="_blank" rel="noopener">▶ Watch a PokeStrikers Video</a>
-      </div>
-
-      <div id="bonus-waiting" class="hidden center">
-        <p class="muted">Bonus unlocks in</p>
-        <div class="countdown" id="bonus-timer">10:00</div>
-        <div class="timer-bar"><i id="bonus-fill" style="width:0%"></i></div>
-        <p class="muted" style="font-size:.82rem;">Keep this tab open. Watch the video while you wait!</p>
+      <div id="bonus-active" class="hidden">
+        <div class="video-embed">
+          <iframe id="yt-frame" title="PokeStrikers video"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen></iframe>
+        </div>
+        <div class="center">
+          <p class="muted">Bonus unlocks in</p>
+          <div class="countdown" id="bonus-timer">10:00</div>
+          <div class="timer-bar"><i id="bonus-fill" style="width:0%"></i></div>
+          <p class="muted" style="font-size:.82rem;">Keep watching on this page — your bonus code unlocks when the timer hits zero.</p>
+        </div>
       </div>
 
       <div id="bonus-done" class="hidden">

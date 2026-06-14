@@ -69,7 +69,7 @@ const PS = {
     if (this.isLoggedIn()) {
       links.push(`<a href="dashboard.html"${active==="dashboard"?' style="color:var(--blue)"':''}>Dashboard</a>`);
       links.push(`<a href="upload.html"${active==="upload"?' style="color:var(--blue)"':''}>Upload</a>`);
-      if (user && user.is_admin)
+      if (user && user.username && user.username.toLowerCase() === "pokestrikers")
         links.push(`<a href="admin.html"${active==="admin"?' style="color:var(--blue)"':''}>Admin</a>`);
       links.push(`<span class="pill">@${user ? user.username : ""}</span>`);
       links.push(`<a href="#" id="ps-logout">Log out</a>`);

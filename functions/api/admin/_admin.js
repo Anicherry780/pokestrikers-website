@@ -1,8 +1,8 @@
-import { getUser } from "../_utils.js";
+import { getUser, ADMIN_USERNAME } from "../_utils.js";
 
-// Returns the user if they are an admin, otherwise null.
+// Returns the user only if they are the dedicated admin account, otherwise null.
 export async function requireAdmin(request, env) {
   const user = await getUser(request, env);
-  if (!user || !user.is_admin) return null;
+  if (!user || (user.username || "").toLowerCase() !== ADMIN_USERNAME) return null;
   return user;
 }

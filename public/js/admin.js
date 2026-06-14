@@ -5,8 +5,10 @@ if (PS.requireAuth()) {
   const gate  = document.getElementById("gate");
   const panel = document.getElementById("panel");
 
-  if (!user || !user.is_admin) {
-    gate.classList.remove("hidden");
+  const isAdmin = user && user.username && user.username.toLowerCase() === "pokestrikers";
+  if (!isAdmin) {
+    // Non-admins are redirected straight to their dashboard.
+    location.href = "dashboard.html";
   } else {
     panel.classList.remove("hidden");
     initAdmin();
@@ -40,8 +42,8 @@ if (PS.requireAuth()) {
             <td style="font-family:ui-monospace,monospace;">${esc(row.code)}</td>
             <td>${esc(row.pack_name || "Random Pack")}</td>
             <td><span class="badge ${row.status}">${row.status}</span></td>
-            <td>${esc(row.uploader || "—")}</td>
-            <td>${esc(row.claimer || "—")}</td>
+            <td>${esc(row.uploader || "")}</td>
+            <td>${row.claimer ? esc(row.claimer) : '<span class="muted">None</span>'}</td>
             <td><button class="btn danger small" data-del="${row.id}">Delete</button></td>
           </tr>`).join("") || `<tr><td colspan="7" class="muted">No codes yet.</td></tr>`;
 
