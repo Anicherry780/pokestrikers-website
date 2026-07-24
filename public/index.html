@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PokeStrikers - Free Pokémon TCG Promo Codes</title>
   <meta name="description" content="Share and claim free Pokémon TCG Live promo codes with the PokeStrikers community." />
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css?v=4" />
 </head>
 <body>
   <div class="wrap center-screen">
@@ -34,6 +34,21 @@
         <div class="row" style="justify-content:center;">
           <a class="btn" href="register.html">Create free account</a>
           <a class="btn ghost" href="login.html">Log in</a>
+          <a class="btn ghost" href="status.html">Check a code</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <h2 class="title-glow" style="margin:0;">What's in the Vault right now</h2>
+          <span class="pill" id="vault-updated">live</span>
+        </div>
+        <p class="muted">Sets with codes waiting to be claimed, refreshed every minute.</p>
+        <div class="table-scroll">
+          <table id="vault-table">
+            <thead><tr><th>Set Name</th><th>Available Codes</th><th>Last Updated</th></tr></thead>
+            <tbody><tr><td colspan="3" class="muted">Loading the vault…</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -51,11 +66,12 @@
     </main>
   </div>
 
-  <script src="js/common.js?v=2"></script>
+  <script src="js/common.js?v=4"></script>
   <script>
     // already logged in? send to dashboard
     if (PS.isLoggedIn()) location.href = "dashboard.html";
-    (async () => {
+
+    async function loadStats() {
       try {
         const s = await fetch("/api/stats").then(r => r.json());
         document.getElementById("code-count").textContent = s.available_codes ?? 0;
@@ -64,7 +80,29 @@
         document.getElementById("code-count").textContent = "0";
         document.getElementById("user-count").textContent = "0";
       }
-    })();
+    }
+
+    // Vault table — /api/packs is public and already sorted by most codes first.
+    async function loadVault() {
+      const body = document.querySelector("#vault-table tbody");
+      try {
+        const { packs } = await fetch("/api/packs").then(r => r.json());
+        body.innerHTML = (packs || []).map(p => `
+          <tr>
+            <td>${PS.esc(p.pack_name)}</td>
+            <td><b style="color:var(--blue)">${p.count}</b></td>
+            <td class="muted">${PS.esc(PS.fmtAgo(p.last_updated))}</td>
+          </tr>`).join("")
+          || `<tr><td colspan="3" class="muted">The vault is empty right now. Be the first to share a code!</td></tr>`;
+        document.getElementById("vault-updated").textContent = "updated " + new Date().toLocaleTimeString();
+      } catch {
+        body.innerHTML = `<tr><td colspan="3" class="muted">Couldn't load the vault. Try again shortly.</td></tr>`;
+      }
+    }
+
+    loadStats();
+    loadVault();
+    setInterval(() => { loadStats(); loadVault(); }, 60000);
   </script>
 </body>
 </html>

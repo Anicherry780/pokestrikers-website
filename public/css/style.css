@@ -183,6 +183,80 @@ tr:hover td { background: rgba(0,120,220,.05); }
 #scanner-video { width: 100%; max-width: 420px; border-radius: 12px; border: 1px solid var(--blue); box-shadow: var(--glow-soft); display: none; background:#000; }
 .scan-status { margin-top: 10px; font-weight: 600; color: var(--blue-soft); }
 
+/* ===== notification bell ===== */
+.bell-wrap { position: relative; display: inline-flex; }
+.bell {
+  position: relative; cursor: pointer; font-size: 1.1rem; line-height: 1;
+  background: transparent; border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 7px 10px; transition: border-color .15s, box-shadow .15s;
+}
+.bell:hover { border-color: var(--blue); box-shadow: var(--glow-soft); }
+.bell-badge {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff;
+  font-size: .68rem; font-weight: 900; line-height: 18px; text-align: center;
+  box-shadow: 0 0 10px rgba(255,77,109,.7);
+}
+.bell-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30;
+  width: min(320px, calc(100vw - 36px));
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 16px 44px rgba(0,0,0,.6); overflow: hidden;
+}
+.bell-item {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+  width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0; border-bottom: 1px solid var(--border);
+  padding: 11px 14px; color: var(--text); font-family: var(--font); font-size: .88rem;
+}
+.bell-item:last-child { border-bottom: 0; }
+.bell-item:hover { background: rgba(0,120,220,.1); }
+.bell-item.unread { border-left: 3px solid var(--blue); background: rgba(0,170,255,.06); }
+.bell-item.unread .bell-msg { font-weight: 700; }
+.bell-time { font-size: .75rem; }
+.bell-empty { padding: 14px; font-size: .85rem; line-height: 1.5; }
+
+/* ===== set subscriptions ===== */
+.sub-list { display: flex; flex-direction: column; gap: 8px; max-height: 460px; overflow-y: auto; }
+.sub-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: rgba(0,120,220,.05);
+}
+.sub-name { font-weight: 600; }
+.sub-bell {
+  cursor: pointer; font-size: 1.05rem; line-height: 1; padding: 6px 9px;
+  background: transparent; border: 1px solid var(--border); border-radius: 9px;
+  filter: grayscale(1) opacity(.55); transition: filter .15s, border-color .15s, box-shadow .15s;
+}
+.sub-bell:hover { border-color: var(--blue); }
+.sub-bell.on {
+  filter: none; border-color: var(--warn);
+  box-shadow: 0 0 12px rgba(255,176,32,.45);
+  background: rgba(255,176,32,.12);
+}
+.sub-bell:disabled { cursor: wait; }
+
+.notif-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 14px; margin-bottom: 8px; border-radius: 10px; text-decoration: none;
+  border: 1px solid var(--border); color: var(--text); font-size: .9rem;
+}
+.notif-row:hover { background: rgba(0,120,220,.1); border-color: var(--blue); }
+.notif-row.unread { border-left: 3px solid var(--blue); background: rgba(0,170,255,.06); font-weight: 700; }
+
+/* ===== code status checker ===== */
+.status-result { margin-top: 18px; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+.status-result h3 { margin: 10px 0 6px; }
+.status-result .status-code {
+  font-family: ui-monospace, "Cascadia Code", monospace; font-size: 1.15rem;
+  font-weight: 800; letter-spacing: 2px; color: var(--blue-soft); word-break: break-all;
+}
+.status-result.good { border-color: var(--good); background: rgba(46,230,166,.1); }
+.status-result.warn { border-color: var(--warn); background: rgba(255,176,32,.1); }
+.status-result.bad  { border-color: var(--bad);  background: rgba(255,77,109,.1); }
+.status-result.info { border-color: var(--blue); background: rgba(0,170,255,.1); }
+
 /* ===== misc ===== */
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .row.between { justify-content: space-between; }

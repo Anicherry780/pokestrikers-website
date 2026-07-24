@@ -19,6 +19,11 @@ Theme: Mega Charizard X — dark navy/black with electric-blue (`#00AAFF`) glow.
 | **Claiming** | A random available code is assigned and shown with a 5-minute countdown. After 5 min it disappears and is marked expired. |
 | **Uploading** | Any logged-in user can add a code (`XXX-XXXX-XXX-XXX`). Pack name optional (defaults to "Random Pack"). |
 | **Admin** | Username `pokestrikers`. View/delete/bulk-upload codes, see users, camera scanner. |
+| **Code checker** | Public page at `/status` — look up any code's state (available / claimed / expired / already used / unknown). No login. |
+| **Burned codes** | Every claimed or expired code is recorded in `used_codes` and can never be uploaded again. Expired codes older than 24h are deleted when an admin opens the panel. |
+| **Vault table** | The landing page lists every set with available codes, refreshed every 60s. |
+| **Profile** | `/profile` — join date, upload/claim totals, and the last 10 of each. Claimed codes are masked. |
+| **Subscriptions** | `/notifications` — follow sets with a bell toggle. Uploading a code notifies every follower; the navbar bell shows the unread count. |
 
 ---
 

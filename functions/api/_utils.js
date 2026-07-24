@@ -165,9 +165,51 @@ export function publicUser(u) {
 // Max codes a user may claim in the current window given bonus state.
 export const dailyAllowance = (u) => DAILY_FREE + (u.bonus_unlocked_today ? 1 : 0);
 
-// Lazily flip claimed-but-expired codes to "expired".
+// Lazily flip claimed-but-expired codes to "expired", recording them in
+// used_codes on the way so they can never be uploaded again.
 export async function sweepExpired(env) {
+  const now = nowIso();
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO used_codes (code, used_at)
+       SELECT code, ? FROM codes
+        WHERE status = 'claimed' AND expires_at IS NOT NULL AND expires_at < ?`
+  ).bind(now, now).run();
   await env.DB.prepare(
     "UPDATE codes SET status = 'expired' WHERE status = 'claimed' AND expires_at IS NOT NULL AND expires_at < ?"
-  ).bind(nowIso()).run();
+  ).bind(now).run();
+}
+
+/* ---------- used codes ---------- */
+// A code lands here the moment it is claimed (and again when it expires), so a
+// burned code can never be re-uploaded even after cleanup deletes the row.
+export async function markUsed(env, code) {
+  await env.DB.prepare("INSERT OR IGNORE INTO used_codes (code, used_at) VALUES (?, ?)")
+    .bind(code, nowIso()).run();
+}
+export async function isUsed(env, code) {
+  const row = await env.DB.prepare("SELECT code FROM used_codes WHERE code = ?").bind(code).first();
+  return !!row;
+}
+
+/* ---------- notifications ---------- */
+// Fan a "new code" notification out to everyone subscribed to this set.
+// The uploader never notifies themselves. Returns how many were created.
+export async function notifySubscribers(env, packName, uploaderUsername) {
+  const { results } = await env.DB.prepare(
+    "SELECT username FROM subscriptions WHERE pack_name = ?"
+  ).bind(packName).all();
+
+  const targets = (results || [])
+    .map((r) => r.username)
+    .filter((u) => u && u !== uploaderUsername);
+  if (!targets.length) return 0;
+
+  const message = `New ${packName} code available!`;
+  const now = nowIso();
+  const stmt = env.DB.prepare(
+    "INSERT INTO notifications (username, message, pack_name, is_read, created_at) VALUES (?, ?, ?, 0, ?)"
+  );
+  // One batch instead of one round-trip per subscriber (Workers cap subrequests).
+  await env.DB.batch(targets.map((u) => stmt.bind(u, message, packName, now)));
+  return targets.length;
 }

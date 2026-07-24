@@ -1,4 +1,4 @@
-import { json, err, getUser, dailyAllowance, sweepExpired, nowIso, resetAt, CLAIM_WINDOW_MS, DAY_MS } from "../_utils.js";
+import { json, err, getUser, dailyAllowance, sweepExpired, nowIso, resetAt, markUsed, CLAIM_WINDOW_MS, DAY_MS } from "../_utils.js";
 
 // GET /api/codes/claim — assign a random available code to the user.
 export async function onRequestGet({ request, env }) {
@@ -45,6 +45,9 @@ export async function onRequestGet({ request, env }) {
     // Someone grabbed it first; ask the client to retry.
     return err("That code was just taken — try again.", 409);
   }
+
+  // Burned the moment it is handed out, so it can never be re-uploaded.
+  await markUsed(env, code.code);
 
   // Start the 24h window on the first claim; keep it on subsequent claims.
   const windowStart = user.last_reset_date || claimedAt;

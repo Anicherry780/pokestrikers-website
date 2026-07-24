@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notifications - PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css?v=4" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div id="alert" class="alert"></div>
+
+    <div class="card">
+      <h1 class="title-glow">Follow your sets</h1>
+      <p class="muted">Tap the bell next to any set. When a trainer uploads a code from it, you'll get a notification.</p>
+      <input id="filter" placeholder="Filter sets…" autocomplete="off" />
+      <div class="spacer"></div>
+      <div id="sub-list" class="sub-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="row between">
+        <h2 class="title-glow" style="margin:0;">Recent notifications</h2>
+        <button class="btn ghost small" id="mark-all">Mark all read</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="notif-list"></div>
+    </div>
+
+    <p class="foot"><a class="link" href="dashboard.html">← Back to dashboard</a></p>
+  </div>
+
+  <script src="js/common.js?v=4"></script>
+  <script src="js/packs.js?v=4"></script>
+  <script src="js/notifications.js?v=4"></script>
+</body>
+</html>

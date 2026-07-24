@@ -1,4 +1,4 @@
-import { json, err, getUser, nowIso, CODE_REGEX } from "../_utils.js";
+import { json, err, getUser, nowIso, CODE_REGEX, isUsed, notifySubscribers } from "../_utils.js";
 
 // POST /api/codes/upload — any logged-in user adds a code.
 export async function onRequestPost({ request, env }) {
@@ -14,6 +14,10 @@ export async function onRequestPost({ request, env }) {
   if (!CODE_REGEX.test(code))
     return err("Code must be in the format XXX-XXXX-XXX-XXX (letters and numbers).");
 
+  // Checked before the duplicate lookup so a claimed/expired code reports as
+  // burned rather than as a duplicate. Still catches it after cleanup deletes the row.
+  if (await isUsed(env, code)) return err("This code has already been used.", 409);
+
   const dup = await env.DB.prepare("SELECT id FROM codes WHERE code = ?").bind(code).first();
   if (dup) return err("That code has already been uploaded.", 409);
 
@@ -25,5 +29,7 @@ export async function onRequestPost({ request, env }) {
      VALUES (?, ?, ?, ?, 'available')`
   ).bind(code, packName, user.id, nowIso()).run();
 
-  return json({ success: true, code, pack_name: packName }, 201);
+  const notified = await notifySubscribers(env, packName, user.username);
+
+  return json({ success: true, code, pack_name: packName, notified }, 201);
 }

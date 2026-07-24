@@ -95,20 +95,48 @@ const PS = {
     });
   },
 
+  // escape untrusted text before putting it in innerHTML
+  esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  },
+
+  // "3m ago" / "2h ago" / "5d ago" — for notifications and the vault table.
+  fmtAgo(iso) {
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return "";
+    const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  },
+
   // build the standard header; pass current page name to mark nav
   mountHeader(active) {
     const user = this.getUser();
     const header = document.createElement("header");
     header.className = "site-header";
+    const on = (p) => (active === p ? ' style="color:var(--blue)"' : "");
     const links = [];
     if (this.isLoggedIn()) {
-      links.push(`<a href="dashboard.html"${active==="dashboard"?' style="color:var(--blue)"':''}>Dashboard</a>`);
-      links.push(`<a href="upload.html"${active==="upload"?' style="color:var(--blue)"':''}>Upload</a>`);
+      links.push(`<a href="dashboard.html"${on("dashboard")}>Dashboard</a>`);
+      links.push(`<a href="upload.html"${on("upload")}>Upload</a>`);
+      links.push(`<a href="status.html"${on("status")}>Check Code</a>`);
+      links.push(`<a href="notifications.html"${on("notifications")}>Notifications</a>`);
       if (user && user.username && user.username.toLowerCase() === "pokestrikers")
-        links.push(`<a href="admin.html"${active==="admin"?' style="color:var(--blue)"':''}>Admin</a>`);
-      links.push(`<span class="pill">@${user ? user.username : ""}</span>`);
+        links.push(`<a href="admin.html"${on("admin")}>Admin</a>`);
+      links.push(`
+        <span class="bell-wrap">
+          <button class="bell" id="ps-bell" aria-label="Notifications" aria-expanded="false">
+            🔔<span class="bell-badge hidden" id="ps-bell-badge">0</span>
+          </button>
+          <div class="bell-menu hidden" id="ps-bell-menu"></div>
+        </span>`);
+      links.push(`<a class="pill" href="profile.html"${on("profile")}>@${this.esc(user ? user.username : "")}</a>`);
       links.push(`<a href="#" id="ps-logout">Log out</a>`);
     } else {
+      links.push(`<a href="status.html"${on("status")}>Check Code</a>`);
       links.push(`<a href="login.html">Log in</a>`);
       links.push(`<a class="btn small" href="register.html">Sign up</a>`);
     }
@@ -121,5 +149,67 @@ const PS = {
     document.body.prepend(header);
     const lo = document.getElementById("ps-logout");
     if (lo) lo.addEventListener("click", (e) => { e.preventDefault(); this.logout(); });
+    if (this.isLoggedIn()) this.initBell();
+  },
+
+  // ----- notification bell -----
+  initBell() {
+    const bell  = document.getElementById("ps-bell");
+    const badge = document.getElementById("ps-bell-badge");
+    const menu  = document.getElementById("ps-bell-menu");
+    if (!bell || !menu) return;
+
+    const render = (list) => {
+      if (!list.length) {
+        menu.innerHTML = `<div class="bell-empty muted">No notifications yet. Follow a set on the
+          <a class="link" href="notifications.html">Notifications</a> page to get alerts.</div>`;
+        return;
+      }
+      menu.innerHTML = list.map((n) => `
+        <button class="bell-item${n.is_read ? "" : " unread"}" data-id="${n.id}">
+          <span class="bell-msg">${this.esc(n.message)}</span>
+          <span class="bell-time muted">${this.fmtAgo(n.created_at)}</span>
+        </button>`).join("");
+
+      menu.querySelectorAll(".bell-item").forEach((b) => {
+        b.addEventListener("click", async () => {
+          try { await this.api("/api/notifications/read", { method: "POST", body: { id: b.dataset.id } }); }
+          catch {}
+          location.href = "dashboard.html";
+        });
+      });
+    };
+
+    const load = async () => {
+      try {
+        const d = await this.api("/api/notifications");
+        badge.textContent = d.unread > 9 ? "9+" : d.unread;
+        badge.classList.toggle("hidden", !d.unread);
+        render(d.notifications || []);
+      } catch { /* stay quiet in the navbar */ }
+    };
+
+    bell.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const open = menu.classList.toggle("hidden") === false;
+      bell.setAttribute("aria-expanded", String(open));
+      if (open) {
+        await load();
+        // Opening the bell clears the badge; individual rows stay styled unread
+        // until the list is reloaded.
+        try {
+          await this.api("/api/notifications/read", { method: "POST" });
+          badge.classList.add("hidden");
+        } catch {}
+      }
+    });
+    document.addEventListener("click", () => {
+      menu.classList.add("hidden");
+      bell.setAttribute("aria-expanded", "false");
+    });
+    menu.addEventListener("click", (e) => e.stopPropagation());
+
+    load();
+    setInterval(load, 60000);
   },
 };

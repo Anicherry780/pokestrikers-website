@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Check a code - PokeStrikers</title>
+  <meta name="description" content="Check whether a Pokémon TCG Live promo code is still available in the PokeStrikers vault." />
+  <link rel="stylesheet" href="css/style.css?v=4" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="card">
+      <h1 class="title-glow">Check a code</h1>
+      <p class="muted">Paste any Pokémon TCG Live promo code to see whether it's still up for grabs. No account needed.</p>
+      <div id="alert" class="alert"></div>
+
+      <form id="form">
+        <label for="code">Promo code</label>
+        <input id="code" name="code" placeholder="XXX-XXXX-XXX-XXX" autocomplete="off" spellcheck="false"
+               style="text-transform:uppercase; font-family:ui-monospace,monospace; letter-spacing:1px;" required />
+        <div class="spacer"></div>
+        <button class="btn block" id="submit" type="submit">Check</button>
+      </form>
+
+      <div id="result" class="status-result hidden"></div>
+    </div>
+    <p class="foot"><a class="link" href="index.html">← Back to PokeStrikers</a></p>
+  </div>
+
+  <script src="js/common.js?v=4"></script>
+  <script src="js/status.js?v=4"></script>
+</body>
+</html>

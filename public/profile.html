@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your profile - PokeStrikers</title>
+  <link rel="stylesheet" href="css/style.css?v=4" />
+</head>
+<body>
+  <div class="wrap">
+    <div id="alert" class="alert"></div>
+
+    <div class="card center">
+      <h1 class="title-glow" id="p-username">@…</h1>
+      <p class="muted" id="p-since">Member since …</p>
+      <div class="stat-grid" style="margin-top:8px;">
+        <div class="stat">
+          <div class="num" id="p-uploaded">…</div>
+          <div class="label">Codes uploaded</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="p-claimed">…</div>
+          <div class="label">Codes claimed</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="title-glow">Recently claimed</h2>
+      <p class="muted">Codes are masked here. A code is only ever shown in full during its 5-minute claim window.</p>
+      <div class="table-scroll">
+        <table id="claimed-table">
+          <thead><tr><th>Code</th><th>Set</th><th>Claimed</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="title-glow">Recently uploaded</h2>
+      <div class="table-scroll">
+        <table id="uploaded-table">
+          <thead><tr><th>Set</th><th>Status</th><th>Uploaded</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="foot"><a class="link" href="dashboard.html">← Back to dashboard</a></p>
+  </div>
+
+  <script src="js/common.js?v=4"></script>
+  <script src="js/profile.js?v=4"></script>
+</body>
+</html>

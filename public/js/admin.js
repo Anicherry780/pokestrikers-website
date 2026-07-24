@@ -124,8 +124,11 @@ if (PS.requireAuth()) {
       alertEl,
     });
 
-    loadCodes();
-    loadUsers();
+    // Housekeeping: drop expired codes older than 24h, then show the fresh list.
+    PS.api("/api/admin/cleanup")
+      .then((r) => { if (r.deleted) PS.alert(alertEl, "info", `Cleaned up ${r.deleted} expired code(s).`); })
+      .catch(() => {})
+      .finally(() => { loadCodes(); loadUsers(); });
   }
 
   function esc(s) {
