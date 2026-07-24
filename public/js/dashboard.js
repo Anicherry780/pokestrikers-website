@@ -212,7 +212,8 @@ if (PS.requireAuth()) {
     if (embedSet) return;
     embedSet = true;
     setSrc(FALLBACK_VIDEO);                             // show the video immediately
-    fetch("/api/latest-video")                          // upgrade to the newest upload
+    // no-store: a cached id can outlive a livestream being filtered out server-side
+    fetch("/api/latest-video", { cache: "no-store" })    // upgrade to the newest regular upload
       .then((r) => r.json())
       .then((d) => { if (d && d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId); })
       .catch(() => {})
