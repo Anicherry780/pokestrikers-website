@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin - PokeStrikers</title>
-  <link rel="stylesheet" href="css/style.css?v=4" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
   <!-- Tesseract.js OCR fallback (free, CDN, runs in browser) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -31,6 +31,7 @@
         <button class="tab active" data-tab="codes">Codes</button>
         <button class="tab" data-tab="add">Scan / Add</button>
         <button class="tab" data-tab="users">Users</button>
+        <button class="tab" data-tab="video">Bonus video</button>
       </div>
 
       <!-- ===== CODES TAB ===== -->
@@ -99,11 +100,40 @@
           </table>
         </div>
       </section>
+
+      <!-- ===== BONUS VIDEO TAB ===== -->
+      <section class="tab-panel card" data-panel="video">
+        <h2 class="title-glow">Watch-to-unlock video</h2>
+        <p class="muted">
+          Pin the video shown on the dashboard for unlocking a 2nd code. Paste a YouTube link or
+          just the id. Leave it empty and the site falls back to picking the newest non-live video
+          from the channel automatically.
+        </p>
+        <p class="muted" style="font-size:.84rem;">
+          Pick something viewers will actually finish: the bonus unlocks only when the video
+          reaches the end. Livestreams never end, so they can't be used.
+        </p>
+
+        <label for="bonus-video">YouTube link or video id</label>
+        <input id="bonus-video" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+        <div class="spacer"></div>
+        <div class="row">
+          <button class="btn" id="bonus-save">Save</button>
+          <button class="btn ghost" id="bonus-clear">Clear (use newest automatically)</button>
+        </div>
+
+        <div class="spacer"></div>
+        <p class="muted" id="bonus-current">Loading current setting…</p>
+        <div class="video-embed hidden" id="bonus-preview-wrap">
+          <iframe id="bonus-preview" title="Bonus video preview" allowfullscreen
+                  referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        </div>
+      </section>
     </div>
   </div>
 
-  <script src="js/common.js?v=4"></script>
-  <script src="js/scanner.js?v=4"></script>
-  <script src="js/admin.js?v=4"></script>
+  <script src="js/common.js?v=5"></script>
+  <script src="js/scanner.js?v=5"></script>
+  <script src="js/admin.js?v=5"></script>
 </body>
 </html>

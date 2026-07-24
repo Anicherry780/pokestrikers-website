@@ -1,33 +1,56 @@
-// GET /api/latest-video — newest *regular* upload from the PokeStrikers channel
-// (no API key needed; Workers can fetch cross-origin).
+// GET /api/latest-video — which video gates the bonus code.
 //
-// Livestreams and premieres are deliberately skipped. A scheduled stream sits at
-// the top of the RSS feed but never fires the player's ENDED event, so the bonus
-// code could never unlock. Anything that is or was a live broadcast is rejected.
+// Order of preference:
+//   1. A video the admin pinned (settings.bonus_video_id). This wins outright —
+//      it is the only way to guarantee a watchable, appropriate video.
+//   2. Newest entry from the channel feed that is not a scheduled or in-progress
+//      broadcast (those never fire the player's ENDED event, so the bonus could
+//      never unlock). Videos of 2min+ are preferred over Shorts, but a Short is
+//      accepted rather than serving nothing.
+//   3. A hardcoded fallback.
 const CHANNEL_ID = "UCGJnR3Eky-tBz4TPGUs-S-A";
-const FALLBACK_VIDEO = "cgPvGAPyzlA"; // known regular upload, used if nothing else qualifies
-const MAX_CANDIDATES = 4;             // keep subrequests bounded
+const FALLBACK_VIDEO = "cgPvGAPyzlA";
+const MAX_CANDIDATES = 15;   // the feed carries ~15 entries
+const PREFERRED_SECONDS = 120;
 
-// Markers found in the watch page for streams/premieres. "isLiveContent" is also
-// true for finished VODs of past streams, which is intended — only ordinary
-// uploads are eligible.
-const LIVE_MARKERS = ['"isUpcoming":true', '"isLiveNow":true', '"isLiveContent":true'];
+// Present only while a broadcast is scheduled or running. Deliberately excludes
+// "isLiveContent", which stays true forever on a finished stream's VOD — those
+// are fine, since they end normally.
+const LIVE_MARKERS = ['"isUpcoming":true', '"isLiveNow":true'];
 
-async function isRegularVideo(id) {
+async function inspect(id) {
   try {
     const res = await fetch(`https://www.youtube.com/watch?v=${id}&hl=en`, {
       cf: { cacheTtl: 1800, cacheEverything: true },
       headers: { "Accept-Language": "en-US,en;q=0.9" },
     });
-    if (!res.ok) return false;
+    if (!res.ok) return null;
     const html = await res.text();
-    return !LIVE_MARKERS.some((m) => html.includes(m));
+    if (LIVE_MARKERS.some((m) => html.includes(m))) return null;
+    const m = html.match(/"lengthSeconds":"(\d+)"/);
+    return { id, seconds: m ? parseInt(m[1], 10) : 0 };
   } catch {
-    return false; // unreachable/unknown: treat as ineligible rather than risk a stream
+    return null;
   }
 }
 
-export async function onRequestGet() {
+async function pinnedVideo(env) {
+  // Guarded: if the settings table hasn't been created yet, fall through to the
+  // feed rather than 500ing the bonus card.
+  try {
+    const row = await env.DB.prepare(
+      "SELECT value FROM settings WHERE key = 'bonus_video_id'"
+    ).first();
+    return row && row.value ? row.value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function onRequestGet({ env }) {
+  const pinned = await pinnedVideo(env);
+  if (pinned) return respond(pinned, "pinned");
+
   let videoId = FALLBACK_VIDEO;
   let source = "fallback";
 
@@ -42,18 +65,26 @@ export async function onRequestGet() {
         .map((m) => m[1])
         .slice(0, MAX_CANDIDATES);
 
+      let firstUsable = null;
       for (const id of ids) {
-        if (await isRegularVideo(id)) { videoId = id; source = "feed"; break; }
+        const info = await inspect(id);
+        if (!info) continue;
+        if (!firstUsable) firstUsable = info;
+        if (info.seconds >= PREFERRED_SECONDS) { firstUsable = info; break; }
       }
+      if (firstUsable) { videoId = firstUsable.id; source = "feed"; }
     }
   } catch {
     // keep fallback
   }
 
-  // Short browser cache on purpose. The costly part (the feed + watch-page
-  // lookups) is cached at the edge for 30 min via cf.cacheTtl, so re-running
-  // this is cheap — but a long client cache would pin a viewer to a stale
-  // video id, which is how a livestream stuck around after being filtered out.
+  return respond(videoId, source);
+}
+
+function respond(videoId, source) {
+  // Short browser cache on purpose: a long one pins viewers to a stale id, which
+  // is how a filtered-out livestream stayed on screen. The costly YouTube
+  // lookups are edge-cached separately via cf.cacheTtl.
   return new Response(JSON.stringify({ videoId, channelId: CHANNEL_ID, source }), {
     headers: {
       "Content-Type": "application/json",

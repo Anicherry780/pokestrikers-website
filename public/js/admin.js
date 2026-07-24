@@ -111,6 +111,63 @@ if (PS.requireAuth()) {
       } catch (e) { PS.alert(alertEl, "error", e.message); }
     });
 
+    /* ---------- bonus video ---------- */
+    const bonusInput   = document.getElementById("bonus-video");
+    const bonusCurrent = document.getElementById("bonus-current");
+    const previewWrap  = document.getElementById("bonus-preview-wrap");
+    const preview      = document.getElementById("bonus-preview");
+
+    function showBonus(id, updatedAt) {
+      if (id) {
+        bonusCurrent.innerHTML = `Currently pinned: <b>${esc(id)}</b>` +
+          (updatedAt ? ` <span class="muted">(set ${esc(new Date(updatedAt).toLocaleString())})</span>` : "");
+        preview.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?rel=0&modestbranding=1`;
+        previewWrap.classList.remove("hidden");
+      } else {
+        bonusCurrent.textContent = "Nothing pinned — the newest non-live video from the channel is used.";
+        preview.src = "";
+        previewWrap.classList.add("hidden");
+      }
+    }
+
+    async function loadBonus() {
+      try {
+        const d = await PS.api("/api/admin/settings");
+        bonusInput.value = d.bonus_video_id || "";
+        showBonus(d.bonus_video_id, d.updated_at);
+      } catch (e) {
+        bonusCurrent.textContent = "Couldn't load the current setting.";
+        PS.alert(alertEl, "error", e.message);
+      }
+    }
+
+    document.getElementById("bonus-save").addEventListener("click", async () => {
+      PS.clearAlert(alertEl);
+      try {
+        const d = await PS.api("/api/admin/settings", {
+          method: "POST",
+          body: { bonus_video_id: bonusInput.value },
+        });
+        showBonus(d.bonus_video_id, new Date().toISOString());
+        bonusInput.value = d.bonus_video_id || "";
+        PS.alert(alertEl, "success", d.bonus_video_id
+          ? `Bonus video pinned to ${d.bonus_video_id}.`
+          : "Cleared — the newest non-live video will be used.");
+      } catch (e) { PS.alert(alertEl, "error", e.message); }
+    });
+
+    document.getElementById("bonus-clear").addEventListener("click", async () => {
+      PS.clearAlert(alertEl);
+      try {
+        await PS.api("/api/admin/settings", { method: "POST", body: { bonus_video_id: "" } });
+        bonusInput.value = "";
+        showBonus(null);
+        PS.alert(alertEl, "success", "Cleared — the newest non-live video will be used.");
+      } catch (e) { PS.alert(alertEl, "error", e.message); }
+    });
+
+    loadBonus();
+
     /* ---------- auto-format the single-code input ---------- */
     PS.attachCodeFormatter(document.getElementById("single-code"));
 

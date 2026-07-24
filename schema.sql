@@ -55,3 +55,11 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS idx_subs_pack ON subscriptions(pack_name);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(username, is_read);
+
+-- Small key/value store for admin-set options. Currently holds
+-- 'bonus_video_id': the YouTube id pinned as the watch-to-unlock video.
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_at TEXT
+);
