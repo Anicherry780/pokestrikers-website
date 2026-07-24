@@ -8,7 +8,9 @@ export async function onRequestPost({ request, env }) {
   const password = String(body.password || "");
   if (!username || !password) return err("Username and password are required.");
 
-  const user = await env.DB.prepare("SELECT * FROM users WHERE username = ?")
+  // NOCASE so "pokestrikers" logs into the "PokeStrikers" account. Safe because
+  // registration now forbids case-variants, so this can match at most one row.
+  const user = await env.DB.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE")
     .bind(username).first();
   if (!user || !(await verifyPassword(password, user.password_hash)))
     return err("Incorrect username or password.", 401);

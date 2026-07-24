@@ -12,11 +12,18 @@ export async function onRequestPost({ request, env }) {
   if (password.length < 6)
     return err("Password must be at least 6 characters.");
 
-  const exists = await env.DB.prepare("SELECT id FROM users WHERE username = ?")
+  // COLLATE NOCASE: without it SQLite treats "Bob" and "bob" as different names,
+  // which let anyone register a case-variant of an existing account.
+  const exists = await env.DB.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE")
     .bind(username).first();
   if (exists) return err("That username is already taken.", 409);
 
-  const isAdmin = username.toLowerCase() === ADMIN_USERNAME ? 1 : 0;
+  // The admin name is reserved in every casing. Admin is granted by the is_admin
+  // column only (see admin/_admin.js) and is never handed out at signup.
+  if (username.toLowerCase() === ADMIN_USERNAME)
+    return err("That username is reserved.", 409);
+
+  const isAdmin = 0;
   const hash = await hashPassword(password);
 
   // last_reset_date stays NULL until the user's first claim starts the 24h window.

@@ -5,7 +5,8 @@ if (PS.requireAuth()) {
   const gate  = document.getElementById("gate");
   const panel = document.getElementById("panel");
 
-  const isAdmin = user && user.username && user.username.toLowerCase() === "pokestrikers";
+  // Cosmetic only — the API enforces this independently via requireAdmin.
+  const isAdmin = user && user.is_admin;
   if (!isAdmin) {
     // Non-admins are redirected straight to their dashboard.
     location.href = "dashboard.html";

@@ -124,7 +124,7 @@ const PS = {
       links.push(`<a href="upload.html"${on("upload")}>Upload</a>`);
       links.push(`<a href="status.html"${on("status")}>Check Code</a>`);
       links.push(`<a href="notifications.html"${on("notifications")}>Notifications</a>`);
-      if (user && user.username && user.username.toLowerCase() === "pokestrikers")
+      if (user && user.is_admin)
         links.push(`<a href="admin.html"${on("admin")}>Admin</a>`);
       links.push(`
         <span class="bell-wrap">
