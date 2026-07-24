@@ -7,12 +7,37 @@ if (PS.requireAuth()) {
   const notifEl  = document.getElementById("notif-list");
   const filterEl = document.getElementById("filter");
 
+  const addBtn = document.getElementById("add-set");
+  const me = PS.getUser();
+
   let subscribed = new Set();
+  let customSets = [];        // admin-added, shown first
+  let allSets = POKE_PACKS;
+
+  // Admin-added sets sit above the built-ins; dedupe case-insensitively so an
+  // accidental re-add of a built-in name doesn't show twice.
+  function mergeSets() {
+    const seen = new Set();
+    allSets = [...customSets, ...POKE_PACKS].filter((p) => {
+      const k = p.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  async function loadSets() {
+    try {
+      const d = await PS.api("/api/sets");
+      customSets = d.sets || [];
+    } catch { customSets = []; }
+    mergeSets();
+  }
 
   /* ---------- subscriptions ---------- */
   function renderSets() {
     const q = filterEl.value.trim().toLowerCase();
-    const sets = POKE_PACKS.filter((p) => !q || p.toLowerCase().includes(q));
+    const sets = allSets.filter((p) => !q || p.toLowerCase().includes(q));
 
     if (!sets.length) {
       listEl.innerHTML = `<p class="muted">No sets match "${PS.esc(filterEl.value)}".</p>`;
@@ -21,9 +46,12 @@ if (PS.requireAuth()) {
 
     listEl.innerHTML = sets.map((p) => {
       const isOn = subscribed.has(p);
+      const custom = customSets.some((c) => c.toLowerCase() === p.toLowerCase());
       return `
         <div class="sub-row">
           <span class="sub-name">${PS.esc(p)}</span>
+          ${custom && me && me.is_admin
+            ? `<button class="set-del" data-del="${PS.esc(p)}" title="Remove ${PS.esc(p)}">✕</button>` : ""}
           <button class="sub-bell${isOn ? " on" : ""}" data-pack="${PS.esc(p)}"
                   aria-pressed="${isOn}" title="${isOn ? "Unfollow" : "Follow"} ${PS.esc(p)}">
             ${isOn ? "🔔" : "🔕"}
@@ -34,6 +62,38 @@ if (PS.requireAuth()) {
     listEl.querySelectorAll(".sub-bell").forEach((b) => {
       b.addEventListener("click", () => toggle(b.dataset.pack, b));
     });
+    listEl.querySelectorAll(".set-del").forEach((b) => {
+      b.addEventListener("click", () => removeSet(b.dataset.del));
+    });
+  }
+
+  /* ---------- admin: add / remove sets ---------- */
+  if (me && me.is_admin) addBtn.classList.remove("hidden");
+
+  addBtn.addEventListener("click", async () => {
+    const name = prompt("Name of the set to add:");
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    PS.clearAlert(alertEl);
+    try {
+      await PS.api("/api/admin/sets", { method: "POST", body: { name: trimmed } });
+      await loadSets();
+      renderSets();
+      PS.alert(alertEl, "success", `Added ${trimmed}. It's now available to everyone.`);
+    } catch (e) { PS.alert(alertEl, "error", e.message); }
+  });
+
+  async function removeSet(name) {
+    if (!confirm(`Remove "${name}" from the set list?`)) return;
+    PS.clearAlert(alertEl);
+    try {
+      await PS.api("/api/admin/sets", { method: "DELETE", body: { name } });
+      await loadSets();
+      renderSets();
+      PS.alert(alertEl, "success", `Removed ${name}.`);
+    } catch (e) { PS.alert(alertEl, "error", e.message); }
   }
 
   async function toggle(pack, btn) {
@@ -56,6 +116,7 @@ if (PS.requireAuth()) {
   }
 
   async function loadSubs() {
+    await loadSets();
     try {
       const d = await PS.api("/api/subscriptions");
       subscribed = new Set(d.packs || []);

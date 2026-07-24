@@ -9,11 +9,25 @@ if (PS.requireAuth()) {
   const customPack = document.getElementById("custom-pack");
   const btn        = document.getElementById("submit");
 
-  // Build dropdown
-  const opts = ['<option value="">Random Pack (leave blank)</option>'];
-  for (const p of POKE_PACKS) opts.push(`<option value="${p}">${p}</option>`);
-  opts.push('<option value="__other__">Other (type my own)…</option>');
-  packSelect.innerHTML = opts.join("");
+  // Build dropdown: admin-added sets first, then the built-ins.
+  function buildOptions(custom) {
+    const seen = new Set();
+    const merged = [...(custom || []), ...POKE_PACKS].filter((p) => {
+      const k = p.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    const opts = ['<option value="">Random Pack (leave blank)</option>'];
+    for (const p of merged) opts.push(`<option value="${PS.esc(p)}">${PS.esc(p)}</option>`);
+    opts.push('<option value="__other__">Other (type my own)…</option>');
+    packSelect.innerHTML = opts.join("");
+  }
+
+  buildOptions([]);                                   // render immediately
+  PS.api("/api/sets")                                 // then fold in added sets
+    .then((d) => buildOptions(d.sets))
+    .catch(() => {});
 
   // auto-insert dashes as the user types
   PS.attachCodeFormatter(codeInput);

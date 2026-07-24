@@ -63,3 +63,20 @@ CREATE TABLE IF NOT EXISTS settings (
   value      TEXT,
   updated_at TEXT
 );
+
+-- Public chat. Readable by anyone; only logged-in users can post.
+CREATE TABLE IF NOT EXISTS messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  username   TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(username);
+
+-- Sets the admin adds after launch. Merged with the built-in list in
+-- public/js/packs.js by GET /api/sets, so this only holds the additions.
+CREATE TABLE IF NOT EXISTS sets (
+  name       TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL
+);

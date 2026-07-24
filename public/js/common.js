@@ -123,6 +123,7 @@ const PS = {
       links.push(`<a href="dashboard.html"${on("dashboard")}>Dashboard</a>`);
       links.push(`<a href="upload.html"${on("upload")}>Upload</a>`);
       links.push(`<a href="status.html"${on("status")}>Check Code</a>`);
+      links.push(`<a href="chat.html"${on("chat")}>Chat</a>`);
       links.push(`<a href="notifications.html"${on("notifications")}>Notifications</a>`);
       if (user && user.is_admin)
         links.push(`<a href="admin.html"${on("admin")}>Admin</a>`);
@@ -137,6 +138,7 @@ const PS = {
       links.push(`<a href="#" id="ps-logout">Log out</a>`);
     } else {
       links.push(`<a href="status.html"${on("status")}>Check Code</a>`);
+      links.push(`<a href="chat.html"${on("chat")}>Chat</a>`);
       links.push(`<a href="login.html">Log in</a>`);
       links.push(`<a class="btn small" href="register.html">Sign up</a>`);
     }

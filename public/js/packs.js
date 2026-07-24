@@ -1,5 +1,8 @@
-// Pre-filled Pokémon TCG set names for the upload dropdown.
+// Built-in Pokémon TCG set names, newest first. The admin can add more at
+// runtime via /api/admin/sets; GET /api/sets merges those on top of this list.
 const POKE_PACKS = [
+  "Pitch Black",
+  "Perfect Order",
   "Surging Sparks",
   "Prismatic Evolutions",
   "Stellar Crown",

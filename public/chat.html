@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat - PokeStrikers</title>
+  <meta name="description" content="Talk pulls, sets and trades with the PokeStrikers community." />
+  <link rel="stylesheet" href="css/style.css?v=6" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div id="alert" class="alert"></div>
+
+    <div class="card">
+      <div class="row between">
+        <h1 class="title-glow" style="margin:0;">Community chat</h1>
+        <span class="pill" id="chat-status">connecting…</span>
+      </div>
+      <p class="muted">Talk pulls, sets and trades. Please keep promo codes out of chat and
+        <a class="link" href="upload.html">upload them to the vault</a> instead, so everyone gets a fair shot.</p>
+
+      <div id="chat-log" class="chat-log"><p class="muted center">Loading messages…</p></div>
+
+      <div id="composer">
+        <form id="form" class="chat-composer">
+          <input id="body" placeholder="Say something…" autocomplete="off" maxlength="300" />
+          <button class="btn" id="send" type="submit">Send</button>
+        </form>
+        <p class="muted" style="font-size:.78rem;margin:6px 0 0;"><span id="counter">0</span>/300</p>
+      </div>
+
+      <p class="muted center hidden" id="login-cta">
+        <a class="link" href="login.html">Log in</a> or
+        <a class="link" href="register.html">create an account</a> to join the conversation.
+      </p>
+    </div>
+
+    <p class="foot"><a class="link" href="index.html">← Back to PokeStrikers</a></p>
+  </div>
+
+  <script src="js/common.js?v=6"></script>
+  <script src="js/chat.js?v=6"></script>
+</body>
+</html>
