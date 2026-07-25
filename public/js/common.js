@@ -214,4 +214,22 @@ const PS = {
     load();
     setInterval(load, 60000);
   },
+
+  // Legal footer, appended to every page that loads this script.
+  mountLegalFooter() {
+    if (document.getElementById("ps-legal")) return;
+    const p = document.createElement("p");
+    p.id = "ps-legal";
+    p.className = "legal-foot";
+    p.innerHTML =
+      `<a href="privacy.html">Privacy</a> · <a href="terms.html">Terms &amp; legal</a><br />` +
+      `Unofficial fan project. Not affiliated with Nintendo, Creatures, GAME FREAK or The Pokémon Company.`;
+    document.body.appendChild(p);
+  },
 };
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => PS.mountLegalFooter());
+} else {
+  PS.mountLegalFooter();
+}

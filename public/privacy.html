@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy - PokeStrikers</title>
+  <meta name="description" content="What PokeStrikers collects, why, and who can see it." />
+  <link rel="stylesheet" href="css/style.css?v=7" />
+</head>
+<body>
+  <div class="wrap narrow">
+    <div class="card legal">
+      <h1 class="title-glow">Privacy Policy</h1>
+      <p class="muted">Last updated: <span id="updated">24 July 2026</span></p>
+
+      <p>PokeStrikers is a small fan-run community site for sharing Pokémon TCG Live promo codes.
+         This page explains exactly what we store, why, and who can see it. We have tried to keep it
+         plain rather than lawyerly.</p>
+
+      <h2>What we collect</h2>
+      <p>When you create an account we store:</p>
+      <ul>
+        <li><b>Your username.</b> Chosen by you. It is shown publicly next to anything you post.</li>
+        <li><b>Your password, hashed.</b> Stored as a PBKDF2-SHA256 hash with a random salt. We never
+            store, log, or have any way to read your actual password.</li>
+        <li><b>The date you joined.</b></li>
+      </ul>
+
+      <p>As you use the site we also store:</p>
+      <ul>
+        <li>Codes you upload, and codes you claim, each with a timestamp.</li>
+        <li>Which card sets you follow, so we can notify you about them.</li>
+        <li>Notifications generated for you, and whether you have read them.</li>
+        <li>Messages you post in the public chat.</li>
+        <li>How many codes you have claimed in the current 24-hour window, and whether you have
+            unlocked the bonus code.</li>
+      </ul>
+
+      <h2>What we do not collect</h2>
+      <ul>
+        <li><b>No email address.</b> Signing up asks only for a username and a password.</li>
+        <li>No real name, address, phone number, or date of birth.</li>
+        <li>No payment details. Nothing on this site is for sale.</li>
+        <li>No advertising or analytics trackers of our own.</li>
+      </ul>
+
+      <h2>The camera scanner</h2>
+      <p>The code scanner on the upload page runs entirely inside your browser. Barcode and text
+         recognition happen on your device, and <b>no photo, video frame, or camera data is ever sent
+         to us or to anyone else</b>. Only the text of the code you choose to submit is uploaded.
+         Your browser will ask permission before the camera turns on, and you can revoke it at any time.</p>
+
+      <h2>How you stay logged in</h2>
+      <p>We do not use tracking cookies. When you log in we issue a signed token that is stored in
+         your browser's local storage and sent back to us with each request. It expires after 30 days.
+         Clearing your browser data logs you out but does not delete your account.</p>
+
+      <h2>What other people can see</h2>
+      <p>Please assume the following are public:</p>
+      <ul>
+        <li>Your username.</li>
+        <li>Anything you post in the community chat, which is readable by anyone, including people
+            who are not logged in and search engines.</li>
+        <li>That a code was uploaded or claimed. The code-status checker will show the username of
+            whoever claimed a given code.</li>
+      </ul>
+      <p>The site administrator can additionally see the full list of accounts, join dates, and
+         upload and claim activity.</p>
+
+      <h2>Other services we rely on</h2>
+      <ul>
+        <li><b>Cloudflare</b> hosts the site and its database. Like any web host, Cloudflare processes
+            technical information such as your IP address and request logs in order to serve pages and
+            protect against abuse.</li>
+        <li><b>YouTube</b> supplies the embedded video used to unlock a bonus code. When that video
+            loads, YouTube and Google may set their own cookies and collect data under their own
+            privacy policy, which we do not control.</li>
+        <li><b>jsDelivr</b> serves the text-recognition library used by the scanner. Loading it
+            reveals your IP address to that CDN.</li>
+      </ul>
+
+      <h2>How long we keep things</h2>
+      <p>Account details are kept until the account is removed. Promo codes remain in the database,
+         and once a code has been claimed or has expired we permanently record the code itself so it
+         cannot be uploaded again; that record contains only the code, not who used it. Chat messages
+         are kept until deleted.</p>
+
+      <h2>Your choices</h2>
+      <p>You can stop using the site at any time, unfollow any set from the Notifications page, and
+         clear your local storage to log out. To request that your account and messages be removed,
+         contact us using the details below. Because we do not collect an email address, we may only
+         be able to verify a request from someone logged in to that account.</p>
+
+      <h2>Children</h2>
+      <p>This site is not directed at children under 13, and we ask that under-13s do not create an
+         account. If you believe a child has created one, contact us and we will remove it.</p>
+
+      <h2>Changes</h2>
+      <p>If this policy changes we will update the date at the top of this page.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about this policy, or requests to remove your data:
+         <b id="contact">[ADD YOUR CONTACT EMAIL HERE]</b></p>
+    </div>
+
+    <p class="foot"><a class="link" href="index.html">← Back to PokeStrikers</a></p>
+  </div>
+
+  <script src="js/common.js?v=7"></script>
+  <script>PS.mountHeader("privacy");</script>
+</body>
+</html>
