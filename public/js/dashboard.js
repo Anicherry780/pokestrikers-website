@@ -224,15 +224,25 @@ if (PS.requireAuth()) {
   }
 
   let embedSet = false;
+  let watchTicket = null;
   function setEmbed() {
     if (embedSet) return;
     embedSet = true;
     setSrc(FALLBACK_VIDEO);                             // show the video immediately
-    // no-store: a cached id can outlive a livestream being filtered out server-side
-    fetch("/api/latest-video", { cache: "no-store" })    // upgrade to the newest regular upload
-      .then((r) => r.json())
-      .then((d) => { if (d && d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId); })
-      .catch(() => {})
+    // The ticket both tells us which video to embed and starts the server-side
+    // watch clock, so the unlock can't be granted without the time actually passing.
+    PS.api("/api/bonus/ticket")
+      .then((d) => {
+        watchTicket = d.ticket;
+        if (d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId);
+      })
+      .catch(() => {
+        // Ticket unavailable: still show a sensible video, unlock will just fail.
+        return fetch("/api/latest-video", { cache: "no-store" })
+          .then((r) => r.json())
+          .then((d) => { if (d && d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId); })
+          .catch(() => {});
+      })
       .finally(() => attachApi());                      // attach end-detection last
   }
 
@@ -241,7 +251,7 @@ if (PS.requireAuth()) {
     unlocking = true;
     if (bonusStatus) bonusStatus.textContent = "Unlocking your bonus code…";
     try {
-      await PS.api("/api/bonus/unlock", { method: "POST" });
+      await PS.api("/api/bonus/unlock", { method: "POST", body: { ticket: watchTicket } });
       bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
       PS.alert(alertEl, "success", "🎉 Bonus code unlocked! Claim it above.");

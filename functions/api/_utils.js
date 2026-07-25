@@ -88,24 +88,82 @@ function secret(env) {
 async function hmacKey(env) {
   return crypto.subtle.importKey("raw", enc.encode(secret(env)), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
-export async function signToken(env, uid) {
-  const payload = strToB64url(JSON.stringify({ uid, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 }));
+// Generic signed payloads. Used for session tokens and for the watch tickets
+// that gate the bonus code.
+export async function signPayload(env, obj) {
+  const payload = strToB64url(JSON.stringify(obj));
   const sig = await crypto.subtle.sign("HMAC", await hmacKey(env), enc.encode(payload));
   return `${payload}.${bytesToB64url(new Uint8Array(sig))}`;
 }
-export async function verifyToken(env, token) {
+export async function verifyPayload(env, token) {
   try {
     if (!token) return null;
-    const [payload, sig] = token.split(".");
+    const [payload, sig] = String(token).split(".");
     if (!payload || !sig) return null;
     const ok = await crypto.subtle.verify("HMAC", await hmacKey(env), b64urlToBytes(sig), enc.encode(payload));
     if (!ok) return null;
-    const data = JSON.parse(b64urlToStr(payload));
-    if (!data.exp || data.exp < Date.now()) return null;
-    return data; // { uid, exp }
+    return JSON.parse(b64urlToStr(payload));
   } catch {
     return null;
   }
+}
+
+export async function signToken(env, uid) {
+  return signPayload(env, { uid, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 });
+}
+export async function verifyToken(env, token) {
+  const data = await verifyPayload(env, token);
+  if (!data || !data.exp || data.exp < Date.now()) return null;
+  return data; // { uid, exp }
+}
+
+/* ---------- login throttling ---------- */
+// Failed attempts are counted in the settings k/v table. Only attempts against
+// usernames that actually exist are recorded, so a spray of random names cannot
+// grow the table — and guessing a name that doesn't exist can't succeed anyway.
+export const LOGIN_MAX_FAILS = 8;
+export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+const failKey = (username) => `login_fail:${String(username).toLowerCase()}`;
+
+// Returns ms remaining if locked out, otherwise 0.
+export async function loginLockout(env, username) {
+  try {
+    const row = await env.DB.prepare("SELECT value FROM settings WHERE key = ?")
+      .bind(failKey(username)).first();
+    if (!row || !row.value) return 0;
+
+    const { n, first } = JSON.parse(row.value);
+    const age = Date.now() - first;
+    if (age >= LOGIN_WINDOW_MS) return 0;           // window elapsed
+    return n >= LOGIN_MAX_FAILS ? LOGIN_WINDOW_MS - age : 0;
+  } catch {
+    return 0;   // never lock people out because the store is unavailable
+  }
+}
+
+export async function recordLoginFailure(env, username) {
+  try {
+    const key = failKey(username);
+    const row = await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind(key).first();
+
+    let n = 1, first = Date.now();
+    if (row && row.value) {
+      const prev = JSON.parse(row.value);
+      if (Date.now() - prev.first < LOGIN_WINDOW_MS) { n = prev.n + 1; first = prev.first; }
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+    ).bind(key, JSON.stringify({ n, first }), nowIso()).run();
+  } catch { /* throttling is best-effort */ }
+}
+
+export async function clearLoginFailures(env, username) {
+  try {
+    await env.DB.prepare("DELETE FROM settings WHERE key = ?").bind(failKey(username)).run();
+  } catch { /* best-effort */ }
 }
 
 /* ---------- auth + daily reset ---------- */

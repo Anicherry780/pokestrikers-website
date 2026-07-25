@@ -8,12 +8,37 @@ export async function onRequestGet({ request, env }) {
   await sweepExpired(env);
 
   const allowance = dailyAllowance(user);
-  if (user.daily_codes_used >= allowance) {
+  const hadWindow = !!user.last_reset_date;
+  const windowStart = user.last_reset_date || nowIso();
+
+  // Reserve the quota slot up front with a conditional UPDATE. Checking the
+  // count and incrementing it separately let two concurrent requests both pass
+  // the check and both claim, so a second browser tab bought a free extra code.
+  // `changes === 0` means someone else took the last slot first.
+  const reserved = await env.DB.prepare(
+    `UPDATE users
+        SET daily_codes_used = daily_codes_used + 1,
+            last_reset_date  = COALESCE(last_reset_date, ?)
+      WHERE id = ? AND daily_codes_used < ?`
+  ).bind(windowStart, user.id, allowance).run();
+
+  if (!reserved.meta.changes) {
     const msg = user.bonus_unlocked_today
       ? "You've claimed your maximum of 2 codes. Come back when your 24h cooldown ends!"
       : "You've used your free code. Watch the full PokeStrikers video to unlock a 2nd code!";
     return json({ error: msg, reset_at: resetAt(user) }, 429);
   }
+
+  // Hand the slot back if we can't actually deliver a code. If this claim also
+  // started the 24h window, clear that too — otherwise a failed claim would put
+  // the user on cooldown having received nothing.
+  const releaseSlot = async () => {
+    await env.DB.prepare(
+      hadWindow
+        ? "UPDATE users SET daily_codes_used = daily_codes_used - 1 WHERE id = ? AND daily_codes_used > 0"
+        : "UPDATE users SET daily_codes_used = daily_codes_used - 1, last_reset_date = NULL WHERE id = ? AND daily_codes_used > 0"
+    ).bind(user.id).run();
+  };
 
   // Optional pack filter (?pack=...). Empty/"Random Pack" means any pack.
   const url = new URL(request.url);
@@ -24,12 +49,18 @@ export async function onRequestGet({ request, env }) {
     code = await env.DB.prepare(
       "SELECT * FROM codes WHERE status = 'available' AND pack_name = ? ORDER BY RANDOM() LIMIT 1"
     ).bind(pack).first();
-    if (!code) return err(`No codes available for "${pack}" right now. Try another set!`, 404);
+    if (!code) {
+      await releaseSlot();
+      return err(`No codes available for "${pack}" right now. Try another set!`, 404);
+    }
   } else {
     code = await env.DB.prepare(
       "SELECT * FROM codes WHERE status = 'available' ORDER BY RANDOM() LIMIT 1"
     ).first();
-    if (!code) return err("No codes are available right now. Check back soon — or upload one yourself!", 404);
+    if (!code) {
+      await releaseSlot();
+      return err("No codes are available right now. Check back soon — or upload one yourself!", 404);
+    }
   }
 
   const now = Date.now();
@@ -42,23 +73,15 @@ export async function onRequestGet({ request, env }) {
   ).bind(user.id, claimedAt, expiresAt, code.id).run();
 
   if (!upd.meta.changes) {
-    // Someone grabbed it first; ask the client to retry.
+    // Someone grabbed it first; hand the slot back and ask the client to retry.
+    await releaseSlot();
     return err("That code was just taken — try again.", 409);
   }
 
   // Burned the moment it is handed out, so it can never be re-uploaded.
   await markUsed(env, code.code);
 
-  // Start the 24h window on the first claim; keep it on subsequent claims.
-  const windowStart = user.last_reset_date || claimedAt;
-  if (user.last_reset_date) {
-    await env.DB.prepare("UPDATE users SET daily_codes_used = daily_codes_used + 1 WHERE id = ?")
-      .bind(user.id).run();
-  } else {
-    await env.DB.prepare("UPDATE users SET daily_codes_used = daily_codes_used + 1, last_reset_date = ? WHERE id = ?")
-      .bind(windowStart, user.id).run();
-  }
-
+  // The quota was already incremented by the reservation above.
   const reset_at = new Date(new Date(windowStart).getTime() + DAY_MS).toISOString();
 
   return json({
