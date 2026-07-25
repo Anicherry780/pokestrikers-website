@@ -7,6 +7,53 @@ if (PS.requireAuth()) {
 
   const day = (iso) => (iso ? new Date(iso).toLocaleDateString() : "—");
 
+  /* ---------- delete account ---------- */
+  const zone      = document.getElementById("danger-zone");
+  const startBtn  = document.getElementById("delete-start");
+  const confirmEl = document.getElementById("delete-confirm");
+  const pwEl      = document.getElementById("delete-password");
+  const goBtn     = document.getElementById("delete-confirm-btn");
+
+  // The admin account can't be deleted (the server refuses too) — hide the whole
+  // section rather than offer something that will only ever fail.
+  const me = PS.getUser();
+  if (me && me.is_admin) zone.classList.add("hidden");
+
+  startBtn.addEventListener("click", () => {
+    startBtn.classList.add("hidden");
+    confirmEl.classList.remove("hidden");
+    pwEl.focus();
+  });
+
+  document.getElementById("delete-cancel").addEventListener("click", () => {
+    confirmEl.classList.add("hidden");
+    startBtn.classList.remove("hidden");
+    pwEl.value = "";
+    PS.clearAlert(alertEl);
+  });
+
+  goBtn.addEventListener("click", async () => {
+    if (!pwEl.value) { pwEl.focus(); return; }
+    if (!confirm("Delete your account permanently? This cannot be undone.")) return;
+
+    PS.clearAlert(alertEl);
+    goBtn.disabled = true; goBtn.textContent = "Deleting…";
+    try {
+      await PS.api("/api/account/delete", { method: "POST", body: { password: pwEl.value } });
+      // Clear the local session directly: PS.logout() would also work, but this
+      // keeps the farewell visible instead of bouncing instantly.
+      localStorage.removeItem(PS.TOKEN_KEY);
+      localStorage.removeItem(PS.USER_KEY);
+      document.querySelector(".wrap").innerHTML =
+        `<div class="card center"><h1 class="title-glow">Account deleted</h1>
+         <p class="muted">Your account and messages are gone. Thanks for sharing codes while you were here.</p>
+         <a class="btn" href="index.html">Back to PokeStrikers</a></div>`;
+    } catch (e) {
+      PS.alert(alertEl, "error", e.message);
+      goBtn.disabled = false; goBtn.textContent = "Permanently delete";
+    }
+  });
+
   (async () => {
     try {
       const d = await PS.api("/api/profile");

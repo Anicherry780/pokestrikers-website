@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your profile - PokeStrikers</title>
-  <link rel="stylesheet" href="css/style.css?v=9" />
+  <link rel="stylesheet" href="css/style.css?v=10" />
 </head>
 <body>
   <div class="wrap">
@@ -46,10 +46,33 @@
       </div>
     </div>
 
+    <div class="card danger-zone" id="danger-zone">
+      <h2>Delete your account</h2>
+      <p class="muted">
+        This erases your account, your chat messages, your followed sets and your notifications.
+        It cannot be undone.
+      </p>
+      <p class="muted" style="font-size:.86rem;">
+        Codes you uploaded stay in the vault so other trainers can still claim them, but they
+        stop being linked to you. Codes you claimed also stop being linked to you.
+      </p>
+
+      <button class="btn danger" id="delete-start">Delete my account</button>
+
+      <div id="delete-confirm" class="hidden" style="margin-top:14px;">
+        <label for="delete-password">Enter your password to confirm</label>
+        <input id="delete-password" type="password" autocomplete="current-password" />
+        <div class="row" style="margin-top:12px;">
+          <button class="btn danger" id="delete-confirm-btn">Permanently delete</button>
+          <button class="btn ghost" id="delete-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <p class="foot"><a class="link" href="dashboard.html">← Back to dashboard</a></p>
   </div>
 
-  <script src="js/common.js?v=9"></script>
-  <script src="js/profile.js?v=9"></script>
+  <script src="js/common.js?v=10"></script>
+  <script src="js/profile.js?v=10"></script>
 </body>
 </html>

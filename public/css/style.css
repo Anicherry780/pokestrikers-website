@@ -326,6 +326,10 @@ select option { background: #0a1426; color: var(--text); }
 .status-result.bad  { border-color: var(--bad);  background: rgba(255,77,109,.1); }
 .status-result.info { border-color: var(--blue); background: rgba(0,170,255,.1); }
 
+/* ===== danger zone ===== */
+.danger-zone { border-color: rgba(255,77,109,.45); }
+.danger-zone h2 { color: var(--bad); text-shadow: none; margin-bottom: .4em; }
+
 /* ===== legal pages + footer ===== */
 .legal h2 { font-size: 1.08rem; margin: 22px 0 .4em; color: var(--blue-soft); text-shadow: none; }
 .legal p, .legal li { color: var(--muted); line-height: 1.6; font-size: .92rem; }

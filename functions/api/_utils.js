@@ -249,6 +249,28 @@ export async function isUsed(env, code) {
   return !!row;
 }
 
+/* ---------- account removal ---------- */
+// Erase a user and everything personally tied to them, in one atomic batch.
+//
+// Codes are deliberately kept but unlinked: they were given to the community,
+// and deleting them would punish everyone else. Once unlinked nothing connects
+// them to a person. used_codes is untouched — it holds only code strings, never
+// a user reference, which is what stops a burned code being re-uploaded.
+export async function purgeUser(env, user) {
+  const uid = user.id;
+  const uname = user.username;
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE codes SET uploaded_by = NULL WHERE uploaded_by = ?").bind(uid),
+    env.DB.prepare("UPDATE codes SET claimed_by = NULL WHERE claimed_by = ?").bind(uid),
+    env.DB.prepare("DELETE FROM messages      WHERE username = ? COLLATE NOCASE").bind(uname),
+    env.DB.prepare("DELETE FROM subscriptions WHERE username = ? COLLATE NOCASE").bind(uname),
+    env.DB.prepare("DELETE FROM notifications WHERE username = ? COLLATE NOCASE").bind(uname),
+    env.DB.prepare("DELETE FROM settings      WHERE key = ?").bind(`login_fail:${uname.toLowerCase()}`),
+    env.DB.prepare("DELETE FROM users         WHERE id = ?").bind(uid),
+  ]);
+}
+
 /* ---------- notifications ---------- */
 // Fan a "new code" notification out to everyone subscribed to this set.
 // The uploader never notifies themselves. Returns how many were created.
