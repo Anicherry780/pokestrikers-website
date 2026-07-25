@@ -78,5 +78,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(username);
 -- public/js/packs.js by GET /api/sets, so this only holds the additions.
 CREATE TABLE IF NOT EXISTS sets (
   name       TEXT PRIMARY KEY,
+  series     TEXT,
   created_at TEXT NOT NULL
 );

@@ -50,13 +50,29 @@ if (PS.requireAuth()) {
     }
   }
 
-  // Populate the set picker with sets that currently have codes.
+  // Populate the set picker with sets that currently have codes, grouped by
+  // series (Mega Evolution, Scarlet & Violet, …) so a long list stays scannable.
+  let adminSets = [];
   async function loadPacks() {
     try {
-      const { packs } = await PS.api("/api/packs");
+      const [{ packs }, setsRes] = await Promise.all([
+        PS.api("/api/packs"),
+        PS.api("/api/sets").catch(() => ({ sets: [] })),
+      ]);
+      adminSets = setsRes.sets || [];
+
       const prev = packPick.value;
       const opts = ['<option value="">Any available set</option>'];
-      for (const p of packs) opts.push(`<option value="${escAttr(p.pack_name)}">${escHtml(p.pack_name)} (${p.count})</option>`);
+
+      for (const group of groupBySeries(packs, adminSets)) {
+        const total = group.items.reduce((n, p) => n + p.count, 0);
+        opts.push(`<optgroup label="${escAttr(group.series)} — ${total} code${total === 1 ? "" : "s"}">`);
+        for (const p of group.items) {
+          opts.push(`<option value="${escAttr(p.pack_name)}">${escHtml(p.pack_name)} (${p.count})</option>`);
+        }
+        opts.push("</optgroup>");
+      }
+
       packPick.innerHTML = opts.join("");
       if ([...packPick.options].some((o) => o.value === prev)) packPick.value = prev;
     } catch {}

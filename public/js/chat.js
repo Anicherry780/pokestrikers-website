@@ -117,5 +117,55 @@ form.addEventListener("submit", async (e) => {
 
 input.addEventListener("input", () => { counter.textContent = input.value.length; });
 
+/* ================= emoji picker ================= */
+const EMOJI = [
+  "😀","😄","😁","😂","🤣","😊","😍","🤩","😎","🤔","😮","😢","😭","😤","😡","🥳",
+  "👍","👎","👏","🙌","🙏","💪","🤝","✌️","🫡","👀","🔥","✨","⭐","🌟","💫","⚡",
+  "❤️","🧡","💛","💚","💙","💜","🖤","💯","🎉","🎊","🎁","🏆","🥇","💎","👑","🪙",
+  "🎴","🃏","📦","🛒","💰","🤑","🎯","🎲","🧧","🔮","🗝️","🚀","💥","🌈","☀️","🌙",
+  "🐉","🦅","🐺","🦊","🐢","🦈","🐍","🕷️","🦇","🐲","🌊","🍀","🌋","❄️","🪐","🌀",
+];
+
+const emojiBtn   = document.getElementById("emoji-btn");
+const emojiPanel = document.getElementById("emoji-panel");
+
+emojiPanel.innerHTML = EMOJI
+  .map((e) => `<button type="button" class="emoji-pick" data-e="${e}">${e}</button>`)
+  .join("");
+
+function insertEmoji(ch) {
+  const start = input.selectionStart ?? input.value.length;
+  const end   = input.selectionEnd ?? input.value.length;
+  const next  = input.value.slice(0, start) + ch + input.value.slice(end);
+
+  if (next.length > 300) return;          // respect the server's cap
+  input.value = next;
+  counter.textContent = input.value.length;
+  const caret = start + ch.length;
+  input.focus();
+  input.setSelectionRange(caret, caret);
+}
+
+emojiPanel.querySelectorAll(".emoji-pick").forEach((b) => {
+  b.addEventListener("click", () => insertEmoji(b.dataset.e));
+});
+
+emojiBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = emojiPanel.classList.toggle("hidden") === false;
+  emojiBtn.setAttribute("aria-expanded", String(open));
+});
+emojiPanel.addEventListener("click", (e) => e.stopPropagation());
+document.addEventListener("click", () => {
+  emojiPanel.classList.add("hidden");
+  emojiBtn.setAttribute("aria-expanded", "false");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    emojiPanel.classList.add("hidden");
+    emojiBtn.setAttribute("aria-expanded", "false");
+  }
+});
+
 poll();
 setInterval(poll, POLL_MS);

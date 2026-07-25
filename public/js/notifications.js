@@ -11,15 +11,15 @@ if (PS.requireAuth()) {
   const me = PS.getUser();
 
   let subscribed = new Set();
-  let customSets = [];        // admin-added, shown first
+  let customSets = [];        // admin-added [{name, series}]
   let allSets = POKE_PACKS;
 
   // Admin-added sets sit above the built-ins; dedupe case-insensitively so an
   // accidental re-add of a built-in name doesn't show twice.
   function mergeSets() {
     const seen = new Set();
-    allSets = [...customSets, ...POKE_PACKS].filter((p) => {
-      const k = p.toLowerCase();
+    allSets = [...customSets.map((c) => c.name), ...POKE_PACKS].filter((p) => {
+      const k = String(p).toLowerCase();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -44,18 +44,31 @@ if (PS.requireAuth()) {
       return;
     }
 
-    listEl.innerHTML = sets.map((p) => {
-      const isOn = subscribed.has(p);
-      const custom = customSets.some((c) => c.toLowerCase() === p.toLowerCase());
+    // Grouped by series so the list reads as Mega Evolution → Scarlet & Violet → …
+    listEl.innerHTML = groupBySeries(sets, customSets).map((group) => {
+      const followed = group.items.filter((p) => subscribed.has(p)).length;
+      const rows = group.items.map((p) => {
+        const isOn = subscribed.has(p);
+        const custom = customSets.some((c) => c.name.toLowerCase() === p.toLowerCase());
+        return `
+          <div class="sub-row">
+            <span class="sub-name">${PS.esc(p)}</span>
+            ${custom && me && me.is_admin
+              ? `<button class="set-del" data-del="${PS.esc(p)}" title="Remove ${PS.esc(p)}">✕</button>` : ""}
+            <button class="sub-bell${isOn ? " on" : ""}" data-pack="${PS.esc(p)}"
+                    aria-pressed="${isOn}" title="${isOn ? "Unfollow" : "Follow"} ${PS.esc(p)}">
+              ${isOn ? "🔔" : "🔕"}
+            </button>
+          </div>`;
+      }).join("");
+
       return `
-        <div class="sub-row">
-          <span class="sub-name">${PS.esc(p)}</span>
-          ${custom && me && me.is_admin
-            ? `<button class="set-del" data-del="${PS.esc(p)}" title="Remove ${PS.esc(p)}">✕</button>` : ""}
-          <button class="sub-bell${isOn ? " on" : ""}" data-pack="${PS.esc(p)}"
-                  aria-pressed="${isOn}" title="${isOn ? "Unfollow" : "Follow"} ${PS.esc(p)}">
-            ${isOn ? "🔔" : "🔕"}
-          </button>
+        <div class="series-group">
+          <div class="series-head">
+            <span>${PS.esc(group.series)}</span>
+            <span class="series-count">${followed ? followed + " followed · " : ""}${group.items.length}</span>
+          </div>
+          ${rows}
         </div>`;
     }).join("");
 
@@ -68,21 +81,49 @@ if (PS.requireAuth()) {
   }
 
   /* ---------- admin: add / remove sets ---------- */
-  if (me && me.is_admin) addBtn.classList.remove("hidden");
+  const addForm    = document.getElementById("add-form");
+  const newName    = document.getElementById("new-set-name");
+  const newSeries  = document.getElementById("new-set-series");
 
-  addBtn.addEventListener("click", async () => {
-    const name = prompt("Name of the set to add:");
-    if (name === null) return;
-    const trimmed = name.trim();
-    if (!trimmed) return;
+  if (me && me.is_admin) {
+    addBtn.classList.remove("hidden");
+    newSeries.innerHTML = [...POKE_SERIES.map((s) => s.name), OTHER_SERIES]
+      .map((s) => `<option value="${PS.esc(s)}">${PS.esc(s)}</option>`).join("");
+  }
+
+  const closeForm = () => {
+    addForm.classList.add("hidden");
+    addBtn.classList.remove("hidden");
+    newName.value = "";
+  };
+
+  addBtn.addEventListener("click", () => {
+    addForm.classList.remove("hidden");
+    addBtn.classList.add("hidden");
+    newName.focus();
+  });
+  document.getElementById("cancel-set").addEventListener("click", closeForm);
+
+  document.getElementById("save-set").addEventListener("click", async () => {
+    const name = newName.value.trim();
+    if (!name) { newName.focus(); return; }
 
     PS.clearAlert(alertEl);
     try {
-      await PS.api("/api/admin/sets", { method: "POST", body: { name: trimmed } });
+      await PS.api("/api/admin/sets", {
+        method: "POST",
+        body: { name, series: newSeries.value },
+      });
+      closeForm();
       await loadSets();
       renderSets();
-      PS.alert(alertEl, "success", `Added ${trimmed}. It's now available to everyone.`);
+      PS.alert(alertEl, "success", `Added ${name} under ${newSeries.value}. It's live for everyone.`);
     } catch (e) { PS.alert(alertEl, "error", e.message); }
+  });
+
+  newName.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("save-set").click(); }
+    if (e.key === "Escape") closeForm();
   });
 
   async function removeSet(name) {

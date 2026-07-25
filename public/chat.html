@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chat - PokeStrikers</title>
   <meta name="description" content="Talk pulls, sets and trades with the PokeStrikers community." />
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
 </head>
 <body>
   <div class="wrap narrow">
@@ -23,6 +23,10 @@
 
       <div id="composer">
         <form id="form" class="chat-composer">
+          <div class="emoji-wrap">
+            <button type="button" class="emoji-btn" id="emoji-btn" aria-label="Insert emoji" aria-expanded="false">😀</button>
+            <div class="emoji-panel hidden" id="emoji-panel"></div>
+          </div>
           <input id="body" placeholder="Say something…" autocomplete="off" maxlength="300" />
           <button class="btn" id="send" type="submit">Send</button>
         </form>
@@ -38,7 +42,7 @@
     <p class="foot"><a class="link" href="index.html">← Back to PokeStrikers</a></p>
   </div>
 
-  <script src="js/common.js?v=7"></script>
-  <script src="js/chat.js?v=7"></script>
+  <script src="js/common.js?v=8"></script>
+  <script src="js/chat.js?v=8"></script>
 </body>
 </html>

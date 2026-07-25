@@ -9,17 +9,23 @@ if (PS.requireAuth()) {
   const customPack = document.getElementById("custom-pack");
   const btn        = document.getElementById("submit");
 
-  // Build dropdown: admin-added sets first, then the built-ins.
+  // Build dropdown grouped by series, with admin-added sets folded in.
   function buildOptions(custom) {
+    const extras = custom || [];
     const seen = new Set();
-    const merged = [...(custom || []), ...POKE_PACKS].filter((p) => {
-      const k = p.toLowerCase();
+    const names = [...extras.map((e) => e.name), ...POKE_PACKS].filter((p) => {
+      const k = String(p).toLowerCase();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
     });
+
     const opts = ['<option value="">Random Pack (leave blank)</option>'];
-    for (const p of merged) opts.push(`<option value="${PS.esc(p)}">${PS.esc(p)}</option>`);
+    for (const group of groupBySeries(names, extras)) {
+      opts.push(`<optgroup label="${PS.esc(group.series)}">`);
+      for (const p of group.items) opts.push(`<option value="${PS.esc(p)}">${PS.esc(p)}</option>`);
+      opts.push("</optgroup>");
+    }
     opts.push('<option value="__other__">Other (type my own)…</option>');
     packSelect.innerHTML = opts.join("");
   }
