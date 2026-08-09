@@ -1,4 +1,8 @@
-import { json, err, getUser, dailyAllowance, sweepExpired, nowIso, resetAt, markUsed, CLAIM_WINDOW_MS, DAY_MS } from "../_utils.js";
+import {
+  json, err, getUser, dailyAllowance, sweepExpired, nowIso, resetAt, markUsed,
+  clientIp, claimIpKey, reserveIpSlot, releaseIpSlot, MAX_CLAIMS_PER_IP_PER_DAY,
+  CLAIM_WINDOW_MS, DAY_MS,
+} from "../_utils.js";
 
 // GET /api/codes/claim — assign a random available code to the user.
 export async function onRequestGet({ request, env }) {
@@ -32,13 +36,32 @@ export async function onRequestGet({ request, env }) {
   // Hand the slot back if we can't actually deliver a code. If this claim also
   // started the 24h window, clear that too — otherwise a failed claim would put
   // the user on cooldown having received nothing.
+  const ip = clientIp(request);
+  const ipKey = claimIpKey(ip);
+
   const releaseSlot = async () => {
     await env.DB.prepare(
       hadWindow
         ? "UPDATE users SET daily_codes_used = daily_codes_used - 1 WHERE id = ? AND daily_codes_used > 0"
         : "UPDATE users SET daily_codes_used = daily_codes_used - 1, last_reset_date = NULL WHERE id = ? AND daily_codes_used > 0"
     ).bind(user.id).run();
+    await releaseIpSlot(env, ipKey);
   };
+
+  // Per-IP daily cap, on top of the per-account one. The account limit alone was
+  // trivially beaten by registering more accounts; this counts codes leaving the
+  // vault to one location no matter how many accounts are behind it.
+  if (!(await reserveIpSlot(env, ipKey, MAX_CLAIMS_PER_IP_PER_DAY))) {
+    await env.DB.prepare(
+      hadWindow
+        ? "UPDATE users SET daily_codes_used = daily_codes_used - 1 WHERE id = ? AND daily_codes_used > 0"
+        : "UPDATE users SET daily_codes_used = daily_codes_used - 1, last_reset_date = NULL WHERE id = ? AND daily_codes_used > 0"
+    ).bind(user.id).run();
+    return json({
+      error: "This location has already claimed its codes for today. Try again tomorrow!",
+      reset_at: resetAt(user),
+    }, 429);
+  }
 
   // Optional pack filter (?pack=...). Empty/"Random Pack" means any pack.
   const url = new URL(request.url);

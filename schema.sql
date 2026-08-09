@@ -9,8 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
   daily_codes_used      INTEGER NOT NULL DEFAULT 0,
   last_reset_date       TEXT,
   bonus_unlocked_today  INTEGER NOT NULL DEFAULT 0,
-  bonus_timer_start     TEXT
+  bonus_timer_start     TEXT,
+  is_banned             INTEGER DEFAULT 0,
+  ip_address            TEXT DEFAULT ''
 );
+
+-- Existing databases need these two applied by hand; CREATE TABLE above only
+-- covers a fresh install:
+--   ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;
+--   ALTER TABLE users ADD COLUMN ip_address TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS codes (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,

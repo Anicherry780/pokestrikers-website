@@ -31,6 +31,9 @@ export async function onRequestPost({ request, env }) {
     return err("Incorrect username or password.", 401);
   }
 
+  if (user.is_banned)
+    return err("Your account has been banned. Contact support.", 403);
+
   await clearLoginFailures(env, user.username);
 
   // apply the 24h window reset on login too

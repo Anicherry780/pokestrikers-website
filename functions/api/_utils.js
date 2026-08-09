@@ -117,6 +117,59 @@ export async function verifyToken(env, token) {
   return data; // { uid, exp }
 }
 
+/* ---------- client IP + per-IP quotas ---------- */
+// Cloudflare always sets CF-Connecting-IP on real traffic; the rest are
+// fallbacks for local dev, where it is normally absent.
+export function clientIp(request) {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    (request.headers.get("X-Forwarded-For") || "").split(",")[0].trim() ||
+    request.headers.get("X-Real-IP") ||
+    "unknown"
+  );
+}
+
+export const utcDay = () => new Date().toISOString().slice(0, 10);
+
+// Take one slot from a per-IP daily counter, atomically.
+//
+// The conditional ON CONFLICT is what makes this safe: the row is only
+// incremented while it is still under the limit, so firing many registrations
+// at once cannot overshoot. changes === 0 means the limit is already reached.
+// Counters live in the settings k/v table, which avoids another migration.
+export async function reserveIpSlot(env, key, limit) {
+  // No usable IP: skip the cap rather than drop every visitor into one shared
+  // bucket, which would throttle the entire site to `limit` per day.
+  if (key.endsWith(":unknown")) return true;
+  try {
+    const res = await env.DB.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES (?, '1', ?)
+         ON CONFLICT(key) DO UPDATE
+            SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT),
+                updated_at = excluded.updated_at
+          WHERE CAST(settings.value AS INTEGER) < ?`
+    ).bind(key, nowIso(), limit).run();
+    return !!res.meta.changes;
+  } catch {
+    return true;   // never lock legitimate users out because the store misbehaved
+  }
+}
+
+export async function releaseIpSlot(env, key) {
+  try {
+    await env.DB.prepare(
+      `UPDATE settings SET value = CAST(CAST(value AS INTEGER) - 1 AS TEXT)
+        WHERE key = ? AND CAST(value AS INTEGER) > 0`
+    ).bind(key).run();
+  } catch { /* best-effort */ }
+}
+
+export const regIpKey   = (ip) => `regip:${utcDay()}:${ip}`;
+export const claimIpKey = (ip) => `claimip:${utcDay()}:${ip}`;
+
+export const MAX_ACCOUNTS_PER_IP_PER_DAY = 3;
+export const MAX_CLAIMS_PER_IP_PER_DAY = 2;
+
 /* ---------- login throttling ---------- */
 // Failed attempts are counted in the settings k/v table. Only attempts against
 // usernames that actually exist are recorded, so a spray of random names cannot
@@ -178,6 +231,11 @@ export async function getUser(request, env) {
   if (!data) return null;
   let user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(data.uid).first();
   if (!user) return null;
+
+  // Checked on every request, not just at login: a ban has to kill the sessions
+  // the user already holds, otherwise their existing token keeps working for
+  // up to 30 days.
+  if (user.is_banned) return null;
 
   return applyWindowReset(user, env);
 }

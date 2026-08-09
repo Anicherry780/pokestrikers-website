@@ -66,22 +66,83 @@ if (PS.requireAuth()) {
 
     /* ---------- users table ---------- */
     const usersBody = document.querySelector("#users-table tbody");
+
+    // How many accounts share each IP — the giveaway for one person running many.
+    function ipCounts(users) {
+      const counts = new Map();
+      for (const u of users) {
+        if (!u.ip_address) continue;
+        counts.set(u.ip_address, (counts.get(u.ip_address) || 0) + 1);
+      }
+      return counts;
+    }
+
     async function loadUsers() {
       try {
         const data = await PS.api("/api/admin/users");
-        usersBody.innerHTML = data.users.map((u) => `
-          <tr>
-            <td>${u.id}</td>
-            <td>${esc(u.username)}</td>
-            <td>${u.is_admin ? "✔" : ""}</td>
-            <td>${(u.created_at||"").slice(0,10)}</td>
-            <td>${u.daily_codes_used}</td>
-            <td>${u.bonus_unlocked_today ? "✔" : ""}</td>
-            <td>${u.uploaded}</td>
-            <td>${u.claimed}</td>
-          </tr>`).join("") || `<tr><td colspan="8" class="muted">No users yet.</td></tr>`;
+        const shared = ipCounts(data.users);
+
+        usersBody.innerHTML = data.users.map((u) => {
+          const dupes = u.ip_address ? shared.get(u.ip_address) : 0;
+          const ipCell = u.ip_address
+            ? `${esc(u.ip_address)}${dupes > 1 ? ` <span class="ip-flag" title="${dupes} accounts from this IP">×${dupes}</span>` : ""}`
+            : `<span class="muted">—</span>`;
+
+          const actions = u.is_admin
+            ? `<span class="muted">protected</span>`
+            : `${u.is_banned
+                  ? `<button class="btn ghost small" data-unban="${u.id}">Unban</button>`
+                  : `<button class="btn danger small" data-ban="${u.id}">Ban</button>`}
+               <button class="btn danger small" data-deluser="${u.id}" data-name="${esc(u.username)}">Delete</button>`;
+
+          return `
+            <tr class="${u.is_banned ? "row-banned" : ""}">
+              <td>${u.id}</td>
+              <td>${esc(u.username)}${u.is_banned ? ' <span class="badge expired">banned</span>' : ""}</td>
+              <td>${u.is_admin ? "✔" : ""}</td>
+              <td style="font-family:ui-monospace,monospace;font-size:.82rem;">${ipCell}</td>
+              <td>${(u.created_at||"").slice(0,10)}</td>
+              <td>${u.daily_codes_used}</td>
+              <td>${u.bonus_unlocked_today ? "✔" : ""}</td>
+              <td>${u.uploaded}</td>
+              <td>${u.claimed}</td>
+              <td style="white-space:nowrap;">${actions}</td>
+            </tr>`;
+        }).join("") || `<tr><td colspan="10" class="muted">No users yet.</td></tr>`;
+
+        usersBody.querySelectorAll("[data-ban]").forEach((b) =>
+          b.addEventListener("click", () => setBanned(b.dataset.ban, true)));
+        usersBody.querySelectorAll("[data-unban]").forEach((b) =>
+          b.addEventListener("click", () => setBanned(b.dataset.unban, false)));
+        usersBody.querySelectorAll("[data-deluser]").forEach((b) =>
+          b.addEventListener("click", () => deleteUser(b.dataset.deluser, b.dataset.name)));
       } catch (e) { PS.alert(alertEl, "error", e.message); }
     }
+
+    async function setBanned(id, banned) {
+      PS.clearAlert(alertEl);
+      try {
+        const r = await PS.api(`/api/admin/${banned ? "ban" : "unban"}`, {
+          method: "POST", body: { id: parseInt(id, 10) },
+        });
+        PS.alert(alertEl, "success",
+          banned ? `Banned ${r.username}. Their sessions are dead immediately.`
+                 : `Unbanned ${r.username}.`);
+        loadUsers();
+      } catch (e) { PS.alert(alertEl, "error", e.message); }
+    }
+
+    async function deleteUser(id, name) {
+      if (!confirm(`Permanently delete "${name}"?\n\nTheir account, chat messages, follows and notifications go. Codes they uploaded stay in the vault for other trainers.`)) return;
+      PS.clearAlert(alertEl);
+      try {
+        const r = await PS.api("/api/admin/users", { method: "DELETE", body: { id: parseInt(id, 10) } });
+        PS.alert(alertEl, "success", `Deleted ${r.username}.`);
+        loadUsers();
+        loadCodes();
+      } catch (e) { PS.alert(alertEl, "error", e.message); }
+    }
+
     document.getElementById("refresh-users").addEventListener("click", loadUsers);
 
     /* ---------- single add ---------- */

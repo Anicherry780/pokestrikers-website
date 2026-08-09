@@ -8,6 +8,8 @@ export async function onRequestGet({ request, env }) {
   const { results } = await env.DB.prepare(
     `SELECT u.id, u.username, u.is_admin, u.created_at,
             u.daily_codes_used, u.bonus_unlocked_today, u.last_reset_date,
+            COALESCE(u.is_banned, 0) AS is_banned,
+            COALESCE(u.ip_address, '') AS ip_address,
             (SELECT COUNT(*) FROM codes WHERE uploaded_by = u.id) AS uploaded,
             (SELECT COUNT(*) FROM codes WHERE claimed_by  = u.id) AS claimed
        FROM users u
