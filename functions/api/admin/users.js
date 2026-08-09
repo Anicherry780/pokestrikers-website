@@ -5,18 +5,30 @@ import { requireAdmin } from "./_admin.js";
 export async function onRequestGet({ request, env }) {
   if (!(await requireAdmin(request, env))) return err("Admin access required.", 403);
 
-  const { results } = await env.DB.prepare(
-    `SELECT u.id, u.username, u.is_admin, u.created_at,
-            u.daily_codes_used, u.bonus_unlocked_today, u.last_reset_date,
-            COALESCE(u.is_banned, 0) AS is_banned,
-            COALESCE(u.ip_address, '') AS ip_address,
-            (SELECT COUNT(*) FROM codes WHERE uploaded_by = u.id) AS uploaded,
-            (SELECT COUNT(*) FROM codes WHERE claimed_by  = u.id) AS claimed
-       FROM users u
-      ORDER BY u.id DESC`
-  ).all();
+  const base = `u.id, u.username, u.is_admin, u.created_at,
+                u.daily_codes_used, u.bonus_unlocked_today, u.last_reset_date,
+                (SELECT COUNT(*) FROM codes WHERE uploaded_by = u.id) AS uploaded,
+                (SELECT COUNT(*) FROM codes WHERE claimed_by  = u.id) AS claimed`;
 
-  return json({ users: results });
+  // is_banned and ip_address arrive via a migration. Until it has been run the
+  // panel still lists everyone, just without the ban state and IP column, rather
+  // than erroring out entirely.
+  let results, migrated = true;
+  try {
+    ({ results } = await env.DB.prepare(
+      `SELECT ${base}, COALESCE(u.is_banned, 0) AS is_banned,
+              COALESCE(u.ip_address, '') AS ip_address
+         FROM users u ORDER BY u.id DESC`
+    ).all());
+  } catch {
+    migrated = false;
+    ({ results } = await env.DB.prepare(
+      `SELECT ${base} FROM users u ORDER BY u.id DESC`
+    ).all());
+    results = (results || []).map((u) => ({ ...u, is_banned: 0, ip_address: "" }));
+  }
+
+  return json({ users: results, migrated });
 }
 
 // DELETE /api/admin/users — erase a user on their behalf. Body: { id }

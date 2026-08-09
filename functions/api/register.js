@@ -46,10 +46,20 @@ export async function onRequestPost({ request, env }) {
     const hash = await hashPassword(password);
 
     // last_reset_date stays NULL until the user's first claim starts the 24h window.
-    const res = await env.DB.prepare(
-      `INSERT INTO users (username, password_hash, is_admin, created_at, daily_codes_used, last_reset_date, bonus_unlocked_today, ip_address)
-       VALUES (?, ?, 0, ?, 0, NULL, 0, ?)`
-    ).bind(username, hash, nowIso(), ip).run();
+    // The ip_address column is added by a migration; until that has been run the
+    // insert falls back to the original column list rather than failing signup.
+    let res;
+    try {
+      res = await env.DB.prepare(
+        `INSERT INTO users (username, password_hash, is_admin, created_at, daily_codes_used, last_reset_date, bonus_unlocked_today, ip_address)
+         VALUES (?, ?, 0, ?, 0, NULL, 0, ?)`
+      ).bind(username, hash, nowIso(), ip).run();
+    } catch {
+      res = await env.DB.prepare(
+        `INSERT INTO users (username, password_hash, is_admin, created_at, daily_codes_used, last_reset_date, bonus_unlocked_today)
+         VALUES (?, ?, 0, ?, 0, NULL, 0)`
+      ).bind(username, hash, nowIso()).run();
+    }
 
     const id = res.meta.last_row_id;
     const token = await signToken(env, id);

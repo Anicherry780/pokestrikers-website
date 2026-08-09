@@ -14,7 +14,11 @@ export async function onRequestPost({ request, env }) {
   if (!target) return err("No such account.", 404);
   if (target.is_admin) return err("The admin account can't be banned.", 403);
 
-  await env.DB.prepare("UPDATE users SET is_banned = 1 WHERE id = ?").bind(target.id).run();
+  try {
+    await env.DB.prepare("UPDATE users SET is_banned = 1 WHERE id = ?").bind(target.id).run();
+  } catch {
+    return err("Banning needs the is_banned column. Run: ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;", 503);
+  }
   return json({ banned: true, username: target.username, id: target.id });
 }
 
