@@ -1,11 +1,16 @@
 // Shared camera code scanner: QR via BarcodeDetector, OCR fallback via Tesseract.js.
 // Runs entirely in the browser — nothing is uploaded. Requires PS (common.js).
-PS.attachScanner = function ({ startBtn, stopBtn, video, status, targetInput, alertEl, onFound }) {
+PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, targetInput, alertEl, onFound }) {
   if (!startBtn || !video || !targetInput) return;
 
   const setStatus = (t) => { if (status) status.textContent = t; };
   const CODE_RE = /[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{3}-[A-Z0-9]{3}/;
+  const FACING_KEY = "ps_cam_facing";
+
   let stream = null, rafId = null, scanning = false, busyOCR = false, lastOCR = 0;
+  // Rear camera by default — that's the one pointed at the card. Remembered so a
+  // phone that needs the other one doesn't have to be corrected every visit.
+  let facing = localStorage.getItem(FACING_KEY) === "user" ? "user" : "environment";
 
   let barcodeDetector = null;
   if ("BarcodeDetector" in window) {
@@ -61,19 +66,74 @@ PS.attachScanner = function ({ startBtn, stopBtn, video, status, targetInput, al
     }
   }
 
+  // Plain `facingMode: "environment"` is only a preference — a phone that can't
+  // satisfy it silently hands back the selfie camera instead, which is why the
+  // scanner kept opening front-facing. `exact` makes it a hard requirement, and
+  // we only fall back to the loose form (then to any camera at all) if that
+  // genuinely isn't available.
+  async function openStream(mode) {
+    const attempts = [
+      { video: { facingMode: { exact: mode } }, audio: false },
+      { video: { facingMode: mode }, audio: false },
+      { video: true, audio: false },
+    ];
+    let lastErr;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr;
+  }
+
+  function stopTracks() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+  }
+
+  // The front camera is shown mirrored, the way every selfie view does, so
+  // moving the card left moves it left on screen. Detection reads the raw frame,
+  // so this is purely cosmetic.
+  function applyMirror() {
+    video.style.transform = facing === "user" ? "scaleX(-1)" : "";
+  }
+
+  // Only worth offering the flip control when there really is another camera.
+  // Labels stay empty until permission is granted, but the count is reliable.
+  async function showFlipIfMultipleCameras() {
+    if (!flipBtn) return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter((d) => d.kind === "videoinput");
+      flipBtn.classList.toggle("hidden", cams.length < 2);
+    } catch {
+      flipBtn.classList.remove("hidden");   // can't tell — offer it anyway
+    }
+  }
+
+  const readyMessage = () =>
+    (barcodeDetector
+      ? "Scanning… point at the QR code or the printed code."
+      : "Scanning via OCR… point at the printed code.") +
+    (facing === "user" ? " (front camera)" : "");
+
   async function start() {
     if (alertEl) PS.clearAlert(alertEl);
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      stream = await openStream(facing);
       video.srcObject = stream;
-      await video.play();
+      applyMirror();
+      // Reveal the element before play(): some mobile browsers refuse to start
+      // a display:none video. play() is also not awaited — a browser that never
+      // resolves it would otherwise leave the scanner looking dead, and the
+      // frame grab works as soon as frames arrive regardless.
       video.style.display = "block";
+      video.play().catch(() => {});
       startBtn.classList.add("hidden");
       if (stopBtn) stopBtn.classList.remove("hidden");
+      await showFlipIfMultipleCameras();
       scanning = true;
-      setStatus(barcodeDetector
-        ? "Scanning… point at the QR code or the printed code."
-        : "Scanning via OCR… point at the printed code.");
+      setStatus(readyMessage());
       loop();
     } catch (e) {
       const msg = "Couldn't access the camera: " + e.message;
@@ -81,17 +141,50 @@ PS.attachScanner = function ({ startBtn, stopBtn, video, status, targetInput, al
     }
   }
 
+  // Swap cameras without tearing the scan loop down — the loop keeps reading the
+  // same <video>, which simply gets a new stream.
+  async function flip() {
+    if (!stream) return;
+    facing = facing === "environment" ? "user" : "environment";
+    localStorage.setItem(FACING_KEY, facing);
+
+    if (flipBtn) flipBtn.disabled = true;
+    setStatus("Switching camera…");
+    try {
+      stopTracks();
+      stream = await openStream(facing);
+      video.srcObject = stream;
+      applyMirror();
+      video.play().catch(() => {});
+      setStatus(readyMessage());
+    } catch (e) {
+      // Put it back if the other camera refused to open.
+      facing = facing === "environment" ? "user" : "environment";
+      localStorage.setItem(FACING_KEY, facing);
+      try {
+        stream = await openStream(facing);
+        video.srcObject = stream;
+        applyMirror();
+        video.play().catch(() => {});
+      } catch {}
+      setStatus("Couldn't switch camera: " + e.message);
+    } finally {
+      if (flipBtn) flipBtn.disabled = false;
+    }
+  }
+
   function stop() {
     scanning = false;
     if (rafId) cancelAnimationFrame(rafId);
-    if (stream) stream.getTracks().forEach((t) => t.stop());
-    stream = null;
+    stopTracks();
     video.style.display = "none";
     startBtn.classList.remove("hidden");
     if (stopBtn) stopBtn.classList.add("hidden");
+    if (flipBtn) flipBtn.classList.add("hidden");
   }
 
   startBtn.addEventListener("click", start);
   if (stopBtn) stopBtn.addEventListener("click", () => { stop(); setStatus("Camera stopped."); });
+  if (flipBtn) flipBtn.addEventListener("click", flip);
   window.addEventListener("beforeunload", stop);
 };

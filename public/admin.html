@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin - PokeStrikers</title>
-  <link rel="stylesheet" href="css/style.css?v=11" />
+  <link rel="stylesheet" href="css/style.css?v=12" />
   <!-- Tesseract.js OCR fallback (free, CDN, runs in browser) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -58,6 +58,7 @@
         <p class="muted">Point your camera at the back of the card. We try the QR code first, then OCR the printed code. The detected code auto-fills below.</p>
         <div class="row">
           <button class="btn" id="scan-start">📷 Open camera</button>
+          <button class="btn ghost hidden" id="scan-flip" title="Switch between front and rear camera">🔄 Flip camera</button>
           <button class="btn ghost hidden" id="scan-stop">Stop camera</button>
         </div>
         <div class="spacer"></div>
@@ -132,8 +133,8 @@
     </div>
   </div>
 
-  <script src="js/common.js?v=11"></script>
-  <script src="js/scanner.js?v=11"></script>
-  <script src="js/admin.js?v=11"></script>
+  <script src="js/common.js?v=12"></script>
+  <script src="js/scanner.js?v=12"></script>
+  <script src="js/admin.js?v=12"></script>
 </body>
 </html>

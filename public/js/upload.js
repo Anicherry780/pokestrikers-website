@@ -42,6 +42,7 @@ if (PS.requireAuth()) {
   PS.attachScanner({
     startBtn:    document.getElementById("scan-start"),
     stopBtn:     document.getElementById("scan-stop"),
+    flipBtn:     document.getElementById("scan-flip"),
     video:       document.getElementById("scanner-video"),
     status:      document.getElementById("scan-status"),
     targetInput: codeInput,
