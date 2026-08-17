@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Upload a code - PokeStrikers</title>
-  <link rel="stylesheet" href="css/style.css?v=16" />
+  <link rel="stylesheet" href="css/style.css?v=18" />
   <!-- Tesseract.js OCR fallback for the scanner (free, CDN, runs in browser) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -18,12 +18,10 @@
       <!-- camera scanner -->
       <div class="row">
         <button type="button" class="btn ghost" id="scan-start">📷 Scan with camera</button>
-        <button type="button" class="btn ghost hidden" id="scan-flip" title="Switch between front and rear camera">🔄 Flip camera</button>
         <button type="button" class="btn ghost hidden" id="scan-stop">Stop camera</button>
       </div>
       <video id="scanner-video" playsinline muted style="margin-top:10px;"></video>
       <div class="scan-status" id="scan-status"></div>
-      <pre class="scan-diag hidden" id="scan-diag"></pre>
       <div class="spacer"></div>
 
       <form id="form">
@@ -46,9 +44,9 @@
     <p class="foot"><a class="link" href="dashboard.html">← Back to dashboard</a></p>
   </div>
 
-  <script src="js/common.js?v=16"></script>
-  <script src="js/scanner.js?v=16"></script>
-  <script src="js/packs.js?v=16"></script>
-  <script src="js/upload.js?v=16"></script>
+  <script src="js/common.js?v=18"></script>
+  <script src="js/scanner.js?v=18"></script>
+  <script src="js/packs.js?v=18"></script>
+  <script src="js/upload.js?v=18"></script>
 </body>
 </html>

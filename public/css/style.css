@@ -182,12 +182,6 @@ tr:hover td { background: rgba(0,120,220,.05); }
 /* ===== scanner ===== */
 #scanner-video { width: 100%; max-width: 420px; border-radius: 12px; border: 1px solid var(--blue); box-shadow: var(--glow-soft); display: none; background:#000; }
 .scan-status { margin-top: 10px; font-weight: 600; color: var(--blue-soft); }
-.scan-diag {
-  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
-  background: rgba(0,0,0,.3); border: 1px solid var(--border);
-  color: var(--muted); font-family: ui-monospace, monospace; font-size: .68rem;
-  line-height: 1.5; white-space: pre-wrap; word-break: break-word; overflow-x: auto;
-}
 
 /* ===== notification bell ===== */
 .bell-wrap { position: relative; display: inline-flex; }
