@@ -89,13 +89,55 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   function stopTracks() {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     stream = null;
+    // iOS Safari can hand back the very same track if the element still holds
+    // the old stream when the next request goes out. Detaching first is what
+    // makes switching cameras actually take effect there.
+    video.srcObject = null;
   }
 
-  // The front camera is shown mirrored, the way every selfie view does, so
-  // moving the card left moves it left on screen. Detection reads the raw frame,
-  // so this is purely cosmetic.
+  // Mirror only the front lens, the way a selfie view does. Detection reads the
+  // raw frame, so this is purely cosmetic.
   function applyMirror() {
     video.style.transform = facing === "user" ? "scaleX(-1)" : "";
+  }
+
+  /* ---------- camera list ---------- */
+  // Toggling facingMode is not enough on phones with several rear lenses — an
+  // iPhone Pro exposes wide, ultra-wide and telephoto as separate devices, and
+  // asking for "environment" can keep returning the same one. Flip therefore
+  // steps through the actual device list, so every lens is reachable.
+  let cameras = [];
+
+  async function refreshCameras() {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      cameras = all.filter((d) => d.kind === "videoinput" && d.deviceId);
+    } catch {
+      cameras = [];
+    }
+  }
+
+  const activeTrack = () => (stream ? stream.getVideoTracks()[0] : null);
+
+  function activeSettings() {
+    const t = activeTrack();
+    try { return t && t.getSettings ? t.getSettings() : {}; } catch { return {}; }
+  }
+
+  // Prefer the label the browser gives the lens ("Back Ultra Wide Camera"), so
+  // it is obvious the button did something.
+  function activeLabel() {
+    const t = activeTrack();
+    if (t && t.label) return t.label;
+    const s = activeSettings();
+    return s.facingMode === "user" ? "front camera" : "rear camera";
+  }
+
+  function cameraPosition() {
+    if (cameras.length < 2) return "";
+    const id = activeSettings().deviceId;
+    const i = cameras.findIndex((c) => c.deviceId === id);
+    return i >= 0 ? ` (${i + 1} of ${cameras.length})` : "";
   }
 
   // Shown whenever the camera is running. Gating this on enumerateDevices()
@@ -107,11 +149,12 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
     if (flipBtn) flipBtn.classList.remove("hidden");
   }
 
+  // Always names the lens in use, so tapping Flip visibly does something even
+  // when several rear cameras look alike on screen.
   const readyMessage = () =>
-    (barcodeDetector
-      ? "Scanning… point at the QR code or the printed code."
-      : "Scanning via OCR… point at the printed code.") +
-    (facing === "user" ? " Using the front camera — tap 🔄 Flip camera to switch." : "");
+    (barcodeDetector ? "Scanning… " : "Scanning via OCR… ") +
+    `Using: ${activeLabel()}${cameraPosition()}. ` +
+    (cameras.length > 1 ? "Tap 🔄 Flip camera to try another lens." : "");
 
   async function start() {
     if (alertEl) PS.clearAlert(alertEl);
@@ -128,6 +171,9 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
       startBtn.classList.add("hidden");
       if (stopBtn) stopBtn.classList.remove("hidden");
       showFlip();
+      // Labels are only populated once permission has been granted, so the list
+      // is read after the first successful open, not before.
+      await refreshCameras();
       scanning = true;
       setStatus(readyMessage());
       loop();
@@ -137,27 +183,50 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
     }
   }
 
-  // Swap cameras without tearing the scan loop down — the loop keeps reading the
-  // same <video>, which simply gets a new stream.
+  // Step to the next camera. The scan loop keeps running against the same
+  // <video>, which simply receives a new stream.
+  //
+  // Cycling the device list rather than toggling facingMode is what makes this
+  // work on multi-lens phones: an iPhone Pro reports wide, ultra-wide and
+  // telephoto separately, and repeatedly asking for "environment" can return
+  // the same lens every time. Tapping Flip walks through all of them.
   async function flip() {
     if (!stream) return;
-    facing = facing === "environment" ? "user" : "environment";
-    localStorage.setItem(FACING_KEY, facing);
-
     if (flipBtn) flipBtn.disabled = true;
     setStatus("Switching camera…");
+
+    const previous = activeSettings().deviceId;
     try {
-      stopTracks();
-      stream = await openStream(facing);
+      await refreshCameras();
+
+      if (cameras.length > 1) {
+        const at = cameras.findIndex((c) => c.deviceId === previous);
+        const next = cameras[(at + 1) % cameras.length];   // at === -1 starts at 0
+
+        stopTracks();
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: next.deviceId } }, audio: false,
+        });
+      } else {
+        // Single reported camera: fall back to flipping the facing hint.
+        facing = facing === "environment" ? "user" : "environment";
+        stopTracks();
+        stream = await openStream(facing);
+      }
+
+      // Track the real facing of whatever opened, so mirroring stays correct.
+      facing = activeSettings().facingMode === "user" ? "user" : "environment";
+      localStorage.setItem(FACING_KEY, facing);
+
       video.srcObject = stream;
       applyMirror();
       video.play().catch(() => {});
       setStatus(readyMessage());
     } catch (e) {
-      // Put it back if the other camera refused to open.
-      facing = facing === "environment" ? "user" : "environment";
-      localStorage.setItem(FACING_KEY, facing);
+      // Whatever we tried refused to open — get *a* camera back rather than
+      // leaving the user staring at a dead preview.
       try {
+        stopTracks();
         stream = await openStream(facing);
         video.srcObject = stream;
         applyMirror();
