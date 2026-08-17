@@ -108,13 +108,35 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   // steps through the actual device list, so every lens is reachable.
   let cameras = [];
 
+  // iOS WKWebView (Chrome, Edge, Firefox on iPhone) reports cameras with empty
+  // deviceId strings. Requiring an id here dropped every camera on those
+  // browsers, so the list came back empty and flip silently fell back to the
+  // facingMode toggle. Keep them all; selection copes with missing ids below.
   async function refreshCameras() {
     try {
       const all = await navigator.mediaDevices.enumerateDevices();
-      cameras = all.filter((d) => d.kind === "videoinput" && d.deviceId);
+      cameras = all.filter((d) => d.kind === "videoinput");
     } catch {
       cameras = [];
     }
+  }
+
+  // Labels are the one reliable signal on iOS: "Front Camera", "Back Camera",
+  // "Back Dual Wide Camera". facingMode is frequently absent from getSettings()
+  // there, so it can't be trusted on its own.
+  const FRONT_RE = /front|face[^b]|user|selfie/i;
+  const BACK_RE = /back|rear|environment|world/i;
+
+  const selectable = () => cameras.filter((c) => c.deviceId);
+  const backCamera = () => selectable().find((c) => BACK_RE.test(c.label || ""));
+
+  // Work out which way the live track actually points, preferring the reported
+  // facingMode and falling back to the label.
+  function inferFacing() {
+    const s = activeSettings();
+    if (s.facingMode === "user" || s.facingMode === "environment") return s.facingMode;
+    const t = activeTrack();
+    return FRONT_RE.test((t && t.label) || "") ? "user" : "environment";
   }
 
   const activeTrack = () => (stream ? stream.getVideoTracks()[0] : null);
@@ -134,10 +156,11 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   }
 
   function cameraPosition() {
-    if (cameras.length < 2) return "";
+    const list = selectable();
+    if (list.length < 2) return "";
     const id = activeSettings().deviceId;
-    const i = cameras.findIndex((c) => c.deviceId === id);
-    return i >= 0 ? ` (${i + 1} of ${cameras.length})` : "";
+    const i = list.findIndex((c) => c.deviceId === id);
+    return i >= 0 ? ` (${i + 1} of ${list.length})` : "";
   }
 
   // Shown whenever the camera is running. Gating this on enumerateDevices()
@@ -154,7 +177,7 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   const readyMessage = () =>
     (barcodeDetector ? "Scanning… " : "Scanning via OCR… ") +
     `Using: ${activeLabel()}${cameraPosition()}. ` +
-    (cameras.length > 1 ? "Tap 🔄 Flip camera to try another lens." : "");
+    "Tap 🔄 Flip camera to switch.";
 
   async function start() {
     if (alertEl) PS.clearAlert(alertEl);
@@ -174,6 +197,26 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
       // Labels are only populated once permission has been granted, so the list
       // is read after the first successful open, not before.
       await refreshCameras();
+
+      // Some browsers hand back the selfie camera even when the rear one was
+      // requested with `exact`. If the list names a back-facing lens we can
+      // select directly, correct it without waiting for the user to tap Flip.
+      if (facing === "environment" && inferFacing() === "user") {
+        const back = backCamera();
+        if (back) {
+          try {
+            stopTracks();
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: back.deviceId } }, audio: false,
+            });
+            video.srcObject = stream;
+            video.play().catch(() => {});
+          } catch { /* keep whatever we already had */ }
+        }
+      }
+
+      facing = inferFacing();
+      applyMirror();
       scanning = true;
       setStatus(readyMessage());
       loop();
@@ -198,24 +241,31 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
     const previous = activeSettings().deviceId;
     try {
       await refreshCameras();
+      const pickable = selectable();
 
-      if (cameras.length > 1) {
-        const at = cameras.findIndex((c) => c.deviceId === previous);
-        const next = cameras[(at + 1) % cameras.length];   // at === -1 starts at 0
+      // Only cycle by id when ids actually exist. On iOS WKWebView they are
+      // empty strings, so the facingMode toggle below is the only option there.
+      if (pickable.length > 1) {
+        const at = pickable.findIndex((c) => c.deviceId === previous);
+        const next = pickable[(at + 1) % pickable.length];   // at === -1 starts at 0
 
         stopTracks();
         stream = await navigator.mediaDevices.getUserMedia({
           video: { deviceId: { exact: next.deviceId } }, audio: false,
         });
       } else {
-        // Single reported camera: fall back to flipping the facing hint.
-        facing = facing === "environment" ? "user" : "environment";
+        // No selectable ids: flip the facing hint, based on what is actually
+        // live rather than a remembered value that may have drifted.
+        facing = inferFacing() === "environment" ? "user" : "environment";
         stopTracks();
         stream = await openStream(facing);
       }
 
-      // Track the real facing of whatever opened, so mirroring stays correct.
-      facing = activeSettings().facingMode === "user" ? "user" : "environment";
+      // Record what actually opened. This previously read facingMode directly
+      // and defaulted to "environment" whenever it was absent — which on iOS is
+      // always — so the stored value reset every time and each tap re-opened
+      // the front camera.
+      facing = inferFacing();
       localStorage.setItem(FACING_KEY, facing);
 
       video.srcObject = stream;
