@@ -98,24 +98,20 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
     video.style.transform = facing === "user" ? "scaleX(-1)" : "";
   }
 
-  // Only worth offering the flip control when there really is another camera.
-  // Labels stay empty until permission is granted, but the count is reliable.
-  async function showFlipIfMultipleCameras() {
-    if (!flipBtn) return;
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter((d) => d.kind === "videoinput");
-      flipBtn.classList.toggle("hidden", cams.length < 2);
-    } catch {
-      flipBtn.classList.remove("hidden");   // can't tell — offer it anyway
-    }
+  // Shown whenever the camera is running. Gating this on enumerateDevices()
+  // reporting two cameras was a mistake: several mobile browsers under-report
+  // the count, which hid the control on exactly the phones that needed it. A
+  // flip on a single-camera device simply reopens the same one, which is a far
+  // better failure than the button never appearing.
+  function showFlip() {
+    if (flipBtn) flipBtn.classList.remove("hidden");
   }
 
   const readyMessage = () =>
     (barcodeDetector
       ? "Scanning… point at the QR code or the printed code."
       : "Scanning via OCR… point at the printed code.") +
-    (facing === "user" ? " (front camera)" : "");
+    (facing === "user" ? " Using the front camera — tap 🔄 Flip camera to switch." : "");
 
   async function start() {
     if (alertEl) PS.clearAlert(alertEl);
@@ -131,7 +127,7 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
       video.play().catch(() => {});
       startBtn.classList.add("hidden");
       if (stopBtn) stopBtn.classList.remove("hidden");
-      await showFlipIfMultipleCameras();
+      showFlip();
       scanning = true;
       setStatus(readyMessage());
       loop();
