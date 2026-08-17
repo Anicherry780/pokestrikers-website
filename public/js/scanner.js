@@ -1,6 +1,6 @@
 // Shared camera code scanner: QR via BarcodeDetector, OCR fallback via Tesseract.js.
 // Runs entirely in the browser — nothing is uploaded. Requires PS (common.js).
-PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, targetInput, alertEl, onFound }) {
+PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, diagEl, video, status, targetInput, alertEl, onFound }) {
   if (!startBtn || !video || !targetInput) return;
 
   const setStatus = (t) => { if (status) status.textContent = t; };
@@ -8,9 +8,14 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   const FACING_KEY = "ps_cam_facing";
 
   let stream = null, rafId = null, scanning = false, busyOCR = false, lastOCR = 0;
-  // Rear camera by default — that's the one pointed at the card. Remembered so a
-  // phone that needs the other one doesn't have to be corrected every visit.
-  let facing = localStorage.getItem(FACING_KEY) === "user" ? "user" : "environment";
+
+  // ALWAYS start on the rear camera. This used to be restored from
+  // localStorage, which was a trap: once the stored value became "user" — which
+  // happened as soon as anyone tapped Flip — every later visit opened the selfie
+  // camera and there was no obvious way back. Flip still switches within the
+  // session; it just no longer poisons the next one.
+  let facing = "environment";
+  try { localStorage.removeItem(FACING_KEY); } catch {}
 
   let barcodeDetector = null;
   if ("BarcodeDetector" in window) {
@@ -71,16 +76,19 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
   // scanner kept opening front-facing. `exact` makes it a hard requirement, and
   // we only fall back to the loose form (then to any camera at all) if that
   // genuinely isn't available.
+  let lastRequested = "";
   async function openStream(mode) {
     const attempts = [
-      { video: { facingMode: { exact: mode } }, audio: false },
-      { video: { facingMode: mode }, audio: false },
-      { video: true, audio: false },
+      ["exact:" + mode, { video: { facingMode: { exact: mode } }, audio: false }],
+      ["loose:" + mode, { video: { facingMode: mode }, audio: false }],
+      ["any", { video: true, audio: false }],
     ];
     let lastErr;
-    for (const constraints of attempts) {
+    for (const [name, constraints] of attempts) {
       try {
-        return await navigator.mediaDevices.getUserMedia(constraints);
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        lastRequested = name;
+        return s;
       } catch (e) { lastErr = e; }
     }
     throw lastErr;
@@ -174,6 +182,26 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
 
   // Always names the lens in use, so tapping Flip visibly does something even
   // when several rear cameras look alike on screen.
+  // Visible dump of what this browser actually reports. Camera behaviour varies
+  // so much between iOS browsers that guessing from a description wastes more
+  // time than showing the real values does.
+  function renderDiag(requested) {
+    if (!diagEl) return;
+    const t = activeTrack();
+    const s = activeSettings();
+    const lines = [
+      `browser: ${navigator.userAgent.slice(0, 90)}`,
+      `requested: ${requested || "-"}`,
+      `active label: ${(t && t.label) || "(none)"}`,
+      `active settings: facingMode=${s.facingMode ?? "(absent)"} deviceId=${s.deviceId ? "yes" : "(absent)"}`,
+      `inferred facing: ${inferFacing()}`,
+      `cameras reported: ${cameras.length} (${selectable().length} with ids)`,
+      ...cameras.map((c, i) => `  [${i}] ${c.label || "(no label)"}${c.deviceId ? "" : "  <no id>"}`),
+    ];
+    diagEl.textContent = lines.join("\n");
+    diagEl.classList.remove("hidden");
+  }
+
   const readyMessage = () =>
     (barcodeDetector ? "Scanning… " : "Scanning via OCR… ") +
     `Using: ${activeLabel()}${cameraPosition()}. ` +
@@ -219,6 +247,7 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
       applyMirror();
       scanning = true;
       setStatus(readyMessage());
+      renderDiag(lastRequested);
       loop();
     } catch (e) {
       const msg = "Couldn't access the camera: " + e.message;
@@ -261,17 +290,15 @@ PS.attachScanner = function ({ startBtn, stopBtn, flipBtn, video, status, target
         stream = await openStream(facing);
       }
 
-      // Record what actually opened. This previously read facingMode directly
-      // and defaulted to "environment" whenever it was absent — which on iOS is
-      // always — so the stored value reset every time and each tap re-opened
-      // the front camera.
+      // Track what actually opened so mirroring and the next flip are correct.
+      // Deliberately not persisted — see the note where `facing` is declared.
       facing = inferFacing();
-      localStorage.setItem(FACING_KEY, facing);
 
       video.srcObject = stream;
       applyMirror();
       video.play().catch(() => {});
       setStatus(readyMessage());
+      renderDiag(lastRequested);
     } catch (e) {
       // Whatever we tried refused to open — get *a* camera back rather than
       // leaving the user staring at a dead preview.
