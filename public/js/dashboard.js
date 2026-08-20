@@ -204,12 +204,53 @@ if (PS.requireAuth()) {
     `https://www.youtube.com/embed/${id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(location.origin)}`;
   function setSrc(id) { currentVideoId = id; ytFrame.src = srcFor(id); }
 
+  // How much of the video counts as "watched". Matches the server's own
+  // allowance so the client doesn't ask before the server will say yes.
+  const WATCH_FRACTION = 0.9;
+  let watchPoll = null, watchedEnough = false;
+
+  // Poll the play position rather than waiting only for ENDED.
+  //
+  // ENDED alone was the bug behind "I watched the video and got no code": on
+  // mobile the embed frequently hands playback to the YouTube app, and the
+  // IFrame API script can fail to load outright. Either way the event never
+  // arrives and the viewer sees nothing at all — not even an error. Watching
+  // the position works whenever the API is alive, and the server still enforces
+  // real elapsed time, so this loosens nothing.
+  function startWatchPoll() {
+    if (watchPoll) return;
+    watchPoll = setInterval(() => {
+      if (!ytPlayer || watchedEnough) return;
+      let at = 0, total = 0;
+      try {
+        at = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+        total = ytPlayer.getDuration ? ytPlayer.getDuration() : 0;
+      } catch { return; }
+      if (!total) return;
+
+      if (bonusStatus && !unlocking) {
+        bonusStatus.textContent =
+          `▶ Watched ${PS.fmtTime(at * 1000)} of ${PS.fmtTime(total * 1000)} — keep going to unlock your 2nd code.`;
+      }
+      if (at >= total * WATCH_FRACTION) {
+        watchedEnough = true;
+        onVideoEnded();
+      }
+    }, 1000);
+  }
+  function stopWatchPoll() { if (watchPoll) clearInterval(watchPoll); watchPoll = null; }
+
   // Load the IFrame API once, then attach a player to the existing iframe for the
   // ENDED event. The video plays regardless of whether this succeeds.
   function attachApi() {
     const build = () => { if (!ytPlayer) ytPlayer = new YT.Player(ytFrame, {
       events: {
-        onStateChange: (e) => { if (window.YT && e.data === YT.PlayerState.ENDED) onVideoEnded(); },
+        onReady: () => startWatchPoll(),
+        onStateChange: (e) => {
+          if (!window.YT) return;
+          if (e.data === YT.PlayerState.PLAYING) startWatchPoll();
+          if (e.data === YT.PlayerState.ENDED) { watchedEnough = true; onVideoEnded(); }
+        },
       },
     }); };
     if (window.YT && window.YT.Player) { build(); return; }
@@ -243,8 +284,28 @@ if (PS.requireAuth()) {
           .then((d) => { if (d && d.videoId && d.videoId !== currentVideoId) setSrc(d.videoId); })
           .catch(() => {});
       })
-      .finally(() => attachApi());                      // attach end-detection last
+      .finally(() => {
+        attachApi();                                    // attach end-detection last
+        // If the IFrame API never attaches — blocked script, or the embed handed
+        // playback to the YouTube app — position polling can't run and the
+        // viewer would have no route to the bonus at all. Offer a manual
+        // unlock; the server still requires the real watch time to have passed,
+        // so this grants nothing early.
+        setTimeout(() => {
+          if (!ytPlayer) {
+            const wrap = document.getElementById("bonus-manual-wrap");
+            if (wrap) wrap.classList.remove("hidden");
+          }
+        }, 20000);
+      });
   }
+
+  const manualBtn = document.getElementById("bonus-manual");
+  if (manualBtn) {
+    manualBtn.addEventListener("click", () => { watchedEnough = true; onVideoEnded(); });
+  }
+
+  let unlockRetries = 0;
 
   async function onVideoEnded() {
     if (unlocking) return;
@@ -252,13 +313,23 @@ if (PS.requireAuth()) {
     if (bonusStatus) bonusStatus.textContent = "Unlocking your bonus code…";
     try {
       await PS.api("/api/bonus/unlock", { method: "POST", body: { ticket: watchTicket } });
+      stopWatchPoll();
       bonusActive.classList.add("hidden");
       bonusDone.classList.remove("hidden");
       PS.alert(alertEl, "success", "🎉 Bonus code unlocked! Claim it above.");
       refresh();
     } catch (e) {
       unlocking = false;
-      PS.alert(alertEl, "error", e.message);
+      // The server also requires real elapsed time, so a viewer who skipped
+      // ahead can reach the end of the video before the clock agrees. Keep
+      // trying quietly instead of making them replay the whole thing.
+      if (watchedEnough && unlockRetries < 40) {
+        unlockRetries++;
+        if (bonusStatus) bonusStatus.textContent = `⏳ ${e.message}`;
+        setTimeout(onVideoEnded, 15000);
+      } else {
+        PS.alert(alertEl, "error", e.message);
+      }
     }
   }
 
