@@ -14,6 +14,15 @@ const POKE_SERIES = [
     ],
   },
   {
+    // Anniversary sets. Deliberately their own series rather than folded into
+    // Mega Evolution — they are special releases, not part of that block.
+    name: "Celebrations",
+    sets: [
+      "30th Celebrations",
+      "25th Celebrations",
+    ],
+  },
+  {
     name: "Scarlet & Violet",
     sets: [
       "Black Bolt",
