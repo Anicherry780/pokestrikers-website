@@ -164,7 +164,9 @@ export async function releaseIpSlot(env, key) {
   } catch { /* best-effort */ }
 }
 
-export const regIpKey   = (ip) => `regip:${utcDay()}:${ip}`;
+// Registration window: 3-day bucket (days since epoch ÷ 3, floored).
+const reg3DayWindow = () => Math.floor(Date.now() / (3 * 24 * 60 * 60 * 1000));
+export const regIpKey   = (ip) => `regip:${reg3DayWindow()}:${ip}`;
 export const claimIpKey = (ip) => `claimip:${utcDay()}:${ip}`;
 
 export const MAX_ACCOUNTS_PER_IP       = 3;   // total ever, not per-day
