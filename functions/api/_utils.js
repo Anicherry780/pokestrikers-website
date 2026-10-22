@@ -167,8 +167,9 @@ export async function releaseIpSlot(env, key) {
 export const regIpKey   = (ip) => `regip:${utcDay()}:${ip}`;
 export const claimIpKey = (ip) => `claimip:${utcDay()}:${ip}`;
 
-export const MAX_ACCOUNTS_PER_IP_PER_DAY = 3;
-export const MAX_CLAIMS_PER_IP_PER_DAY = 2;
+export const MAX_ACCOUNTS_PER_IP       = 3;   // total ever, not per-day
+export const MAX_ACCOUNTS_PER_IP_PER_DAY = 3; // burst limit per calendar day
+export const MAX_CLAIMS_PER_IP_PER_DAY = 3;
 
 /* ---------- login throttling ---------- */
 // Failed attempts are counted in the settings k/v table. Only attempts against

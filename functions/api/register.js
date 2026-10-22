@@ -1,6 +1,7 @@
 import {
   json, err, hashPassword, signToken, nowIso, publicUser, ADMIN_USERNAME,
-  clientIp, regIpKey, reserveIpSlot, releaseIpSlot, MAX_ACCOUNTS_PER_IP_PER_DAY,
+  clientIp, regIpKey, reserveIpSlot, releaseIpSlot,
+  MAX_ACCOUNTS_PER_IP, MAX_ACCOUNTS_PER_IP_PER_DAY,
 } from "./_utils.js";
 import { screenUsername } from "./_profanity.js";
 
@@ -35,12 +36,25 @@ export async function onRequestPost({ request, env }) {
   if (username.toLowerCase() === ADMIN_USERNAME)
     return err("That username is reserved.", 409);
 
-  // Caps how fast one person can farm throwaway accounts. Reserved before the
-  // insert so concurrent signups can't overshoot the limit.
+  // Hard total cap: never more than MAX_ACCOUNTS_PER_IP accounts from one IP,
+  // regardless of how many days have passed. Blocks drip-registration abuse.
   const ip = clientIp(request);
+  if (ip) {
+    try {
+      const row = await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM users WHERE ip_address = ?"
+      ).bind(ip).first();
+      if (row && row.n >= MAX_ACCOUNTS_PER_IP)
+        return err("This location already has the maximum number of accounts.", 429);
+    } catch {
+      // ip_address column not migrated yet — skip this check.
+    }
+  }
+
+  // Per-day burst limit: blocks farming multiple accounts in quick succession.
   const ipKey = regIpKey(ip);
   if (!(await reserveIpSlot(env, ipKey, MAX_ACCOUNTS_PER_IP_PER_DAY)))
-    return err("Too many accounts created from your location. Try again tomorrow.", 429);
+    return err("Too many accounts created from your location today. Try again tomorrow.", 429);
 
   try {
     const hash = await hashPassword(password);
