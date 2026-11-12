@@ -5,6 +5,7 @@ const POKE_SERIES = [
   {
     name: "Mega Evolution",
     sets: [
+      "Delta Reign",
       "Pitch Black",
       "Chaos Rising",
       "Perfect Order",
